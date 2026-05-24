@@ -16845,6 +16845,9 @@ downscaleHugeImagesForEditing() {
     If !(viewportQPVimage.imgHandle)
        Return 0
 
+    If (AnyWindowOpen=64 || liveDrawingBrushTool=1)
+       Return 0
+
    trGdip_GetImageDimensions(useGdiBitmap(), w, h)
    mgpx := Round((w * h)/1000000, 1)
    capIMGdimensionsGDIPlimits(w, h)
@@ -27306,7 +27309,7 @@ createSettingsGUI(IDwin, thisCaller:=0, allowReopen:=1, isImgLiveEditor:=0) {
           Return
        }
 
-       rzx := isVarEqualTo(IDwin, 12, 23, 24, 25, 30, 31, 32, 55, 65, 66, 70, 89) ? 0 : downscaleHugeImagesForEditing()
+       rzx := isVarEqualTo(IDwin, 12, 23, 24, 25, 30, 31, 32, 55, 64, 65, 66, 70, 89) ? 0 : downscaleHugeImagesForEditing()
        If (rzx<0 || rzx=1)
        {
           openingPanelNow := 0
