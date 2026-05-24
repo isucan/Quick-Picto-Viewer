@@ -76194,12 +76194,12 @@ ActPaintBrushLargeNow() {
    MouseCoords2Image(mX, mY, 0, prevDestPosX, prevDestPosY, prevResizedVPimgW, prevResizedVPimgH, kX, kY, 0, 1, imgW, imgH)
    If (BrushToolWetness=21)
    {
-      coloruA := "0xFF" FreeImage_GetPixelColor(viewportQPVimage.imgHandle, kX, kY)
+      coloruA := "0xFF" FreeImage_GetPixelColorDirect(viewportQPVimage.imgHandle, kX, kY)
       startToolColor := SubStr(MixARGB(coloruA, "0xFF" startToolColor, 0.5), 5)
       thisWetness := 20
    } Else If (BrushToolWetness=22)
    {
-      coloruA := "0xFF" FreeImage_GetPixelColor(viewportQPVimage.imgHandle, kX, kY)
+      coloruA := "0xFF" FreeImage_GetPixelColorDirect(viewportQPVimage.imgHandle, kX, kY)
       startToolColor := SubStr(MixARGB(coloruA, "0xFF" startToolColor, 0.2), 5)
       thisWetness := 20
    } Else thisWetness := BrushToolWetness
@@ -76561,7 +76561,7 @@ DrawPaintBrushLargeStep:
 Return
 }
 
-FreeImage_GetPixelColor(hFIF, x, y) {
+FreeImage_GetPixelColorDirect(hFIF, x, y) {
    FreeImage_GetImageDimensions(hFIF, imgW, imgH)
    If (x < 0 || y < 0 || x >= imgW || y >= imgH)
       Return ""
@@ -76577,10 +76577,10 @@ FreeImage_GetPixelColor(hFIF, x, y) {
 }
 
 getPixelColorAvgFreeImage(hFIF, kX, kY, startToolColor) {
-   coloruA := FreeImage_GetPixelColor(hFIF, kX, kY)
-   coloruB := FreeImage_GetPixelColor(hFIF, kX + 2, kY + 2)
-   coloruD := FreeImage_GetPixelColor(hFIF, kX - 2, kY - 2)
-   coloruC := FreeImage_GetPixelColor(hFIF, kX + 2, kY - 2)
+   coloruA := FreeImage_GetPixelColorDirect(hFIF, kX, kY)
+   coloruB := FreeImage_GetPixelColorDirect(hFIF, kX + 2, kY + 2)
+   coloruD := FreeImage_GetPixelColorDirect(hFIF, kX - 2, kY - 2)
+   coloruC := FreeImage_GetPixelColorDirect(hFIF, kX + 2, kY - 2)
    If (coloruA != "" && coloruB != "")
       coloruZ := MixARGB("0xFF" coloruA, "0xFF" coloruB, 0.5)
    If (coloruC != "" && coloruD != "")
