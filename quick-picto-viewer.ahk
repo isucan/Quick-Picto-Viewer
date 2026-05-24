@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -100192,7 +100192,12 @@ GuiSlidersResponder(a, m_event, keyu) {
       If (isGivenKey!=1 && mouseMode=1)
       {
          If (isInRange(mX, zX - 2, zX + 2) && isInRange(mY, zY - 2, zY + 2) && A_Index>1)
+         {
+            Sleep, 10
+            If (A_TickCount - clickStarted>14500)
+               Break
             Continue
+         }
       }
 
       Sleep, -1
