@@ -2342,7 +2342,7 @@ initQPVmainDLL(modus:=0) {
    }
 
    Static srcDll := "e:\Sucan twins\_small-apps\AutoHotkey\my scripts\fast-image-viewer\cPlusPlus\qpv-main\x64\Release\qpvmain.dll"
-   If (A_PtrSize=8 && InStr(A_ScriptDir, "sucan twins") && !A_IsCompiled && FileExist(srcDll))
+    If (A_PtrSize=8 && InStr(A_ScriptDir, "sucan twins") && !InStr(A_ScriptDir, "\ai-dev") && !A_IsCompiled && FileExist(srcDll))
       DllPath := srcDll
 
    qpvMainDll := DllCall("LoadLibraryW", "WStr", DllPath, "UPtr")
