@@ -1128,5 +1128,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int effectSat,           // Effects brush: Saturation adjustment
     int effectLight,         // Effects brush: Lightness adjustment
     int effectGamma,         // Effects brush: Gamma adjustment
-    int effectBlur           // Effects brush: Blur strength
+    int effectBlur,          // Effects brush: Blur strength
+    unsigned char* texData,  // Texture pixel buffer (null if BrushToolTexture = 1/circular)
+    int texW,                // Texture width
+    int texH,                // Texture height
+    int texPitch,            // Texture stride
+    int texBpp               // Texture bits-per-pixel
 );

@@ -8154,7 +8154,12 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int effectSat,           // Effects brush: Saturation adjustment
     int effectLight,         // Effects brush: Lightness adjustment
     int effectGamma,         // Effects brush: Gamma adjustment
-    int effectBlur           // Effects brush: Blur strength
+    int effectBlur,          // Effects brush: Blur strength
+    unsigned char* texData,  // Texture pixel buffer (null if BrushToolTexture = 1/circular)
+    int texW,                // Texture width
+    int texH,                // Texture height
+    int texPitch,            // Texture stride
+    int texBpp               // Texture bits-per-pixel
 ) {
     if (!imgData || imgW <= 0 || imgH <= 0 || pitch <= 0 || brushSize <= 0)
         return 0;
@@ -8163,11 +8168,12 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     if (bytesPerPixel != 3 && bytesPerPixel != 4)
         return 0; // Only support 24-bit (BGR) and 32-bit (BGRA)
 
-    int halfSize = brushSize / 2 + abs(bulgePinchFactor);
-    int startX = clamp((int)(tkX - halfSize), 0, imgW - 1);
-    int endX = clamp((int)(tkX + halfSize), 0, imgW - 1);
-    int startY = clamp((int)(tkY - halfSize), 0, imgH - 1);
-    int endY = clamp((int)(tkY + halfSize), 0, imgH - 1);
+    int halfW = (texData && texW > 0) ? (texW / 2 + abs(bulgePinchFactor)) : (brushSize / 2 + abs(bulgePinchFactor));
+    int halfH = (texData && texH > 0) ? (texH / 2 + abs(bulgePinchFactor)) : (brushSize / 2 + abs(bulgePinchFactor));
+    int startX = clamp((int)(tkX - halfW), 0, imgW - 1);
+    int endX = clamp((int)(tkX + halfW), 0, imgW - 1);
+    int startY = clamp((int)(tkY - halfH), 0, imgH - 1);
+    int endY = clamp((int)(tkY + halfH), 0, imgH - 1);
 
     // Parse foreground color channels
     int brushA = (brushColor >> 24) & 0xFF;
@@ -8214,19 +8220,38 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 src_dy = dy * ((brushSize / 2.0) / dest_radius);
             }
 
-            double rotX = src_dx * cosA - src_dy * sinA;
-            double rotY = src_dx * sinA + src_dy * cosA;
-            double dist_norm = sqrt((rotX / rx) * (rotX / rx) + (rotY / ry) * (rotY / ry));
-
-            if (dist_norm > 1.0)
-                continue;
-
             int mask_val = 255;
-            if (softness > 0) {
-                if (dist_norm >= falloff) {
-                    mask_val = (int)(255.0 * (1.0 - dist_norm) / (1.0 - falloff));
-                    if (mask_val < 0) mask_val = 0;
-                    if (mask_val > 255) mask_val = 255;
+            if (texData && texW > 0 && texH > 0) {
+                int tx = (int)(dx + texW / 2.0);
+                int ty = (int)(dy + texH / 2.0);
+                if (tx >= 0 && tx < texW && ty >= 0 && ty < texH) {
+                    int texBytes = texBpp / 8;
+                    int t_iy = texH - 1 - ty;
+                    unsigned char* texPixel = texData + (INT64)t_iy * texPitch + tx * texBytes;
+                    if (texBytes == 4) {
+                        mask_val = texPixel[3];
+                    } else if (texBytes == 3) {
+                        mask_val = (texPixel[0] + texPixel[1] + texPixel[2]) / 3;
+                    } else if (texBytes == 1) {
+                        mask_val = texPixel[0];
+                    }
+                } else {
+                    mask_val = 0;
+                }
+            } else {
+                double rotX = src_dx * cosA - src_dy * sinA;
+                double rotY = src_dx * sinA + src_dy * cosA;
+                double dist_norm = sqrt((rotX / rx) * (rotX / rx) + (rotY / ry) * (rotY / ry));
+
+                if (dist_norm > 1.0)
+                    continue;
+
+                if (softness > 0) {
+                    if (dist_norm >= falloff) {
+                        mask_val = (int)(255.0 * (1.0 - dist_norm) / (1.0 - falloff));
+                        if (mask_val < 0) mask_val = 0;
+                        if (mask_val > 255) mask_val = 255;
+                    }
                 }
             }
 
@@ -8260,11 +8285,11 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 
                 // Weigh between blended and target based on mask_val
                 float f = mask_val / 255.0f;
-                outR = weighTwoValues(blended.r, tgtR, 1.0f - f);
-                outG = weighTwoValues(blended.g, tgtG, 1.0f - f);
-                outB = weighTwoValues(blended.b, tgtB, 1.0f - f);
+                outR = weighTwoValues(blended.r, tgtR, f);
+                outG = weighTwoValues(blended.g, tgtG, f);
+                outB = weighTwoValues(blended.b, tgtB, f);
                 if (bytesPerPixel == 4) {
-                    outA = weighTwoValues(blended.a, tgtA, 1.0f - f);
+                    outA = weighTwoValues(blended.a, tgtA, f);
                 }
             }
             else if (brushType == 3) {
@@ -8281,11 +8306,11 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 int srcR = srcPixel[2];
                 int srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
 
-                outR = weighTwoValues(srcR, tgtR, 1.0f - weight);
-                outG = weighTwoValues(srcG, tgtG, 1.0f - weight);
-                outB = weighTwoValues(srcB, tgtB, 1.0f - weight);
+                outR = weighTwoValues(srcR, tgtR, weight);
+                outG = weighTwoValues(srcG, tgtG, weight);
+                outB = weighTwoValues(srcB, tgtB, weight);
                 if (bytesPerPixel == 4) {
-                    outA = weighTwoValues(srcA, tgtA, 1.0f - weight);
+                    outA = weighTwoValues(srcA, tgtA, weight);
                 }
             }
             else if (brushType == 4) {
@@ -8299,11 +8324,11 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                     int srcR = srcPixel[2];
                     int srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
 
-                    outR = weighTwoValues(srcR, tgtR, 1.0f - weight);
-                    outG = weighTwoValues(srcG, tgtG, 1.0f - weight);
-                    outB = weighTwoValues(srcB, tgtB, 1.0f - weight);
+                    outR = weighTwoValues(srcR, tgtR, weight);
+                    outG = weighTwoValues(srcG, tgtG, weight);
+                    outB = weighTwoValues(srcB, tgtB, weight);
                     if (bytesPerPixel == 4) {
-                        outA = weighTwoValues(srcA, tgtA, 1.0f - weight);
+                        outA = weighTwoValues(srcA, tgtA, weight);
                     }
                 }
                 else if (bytesPerPixel == 4) {
@@ -8316,8 +8341,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                         // Standard erase: reduce alpha
                         alpha2 = max(0, tgtA - eraseOpacity);
                     }
-                    float fintensity = mask_val / 255.0f;
-                    outA = (int)ceil(alpha2 * fintensity + tgtA * (1.0f - fintensity));
+                    outA = (int)ceil(alpha2 * weight + tgtA * (1.0f - weight));
                     if (outA < 0) outA = 0;
                     if (outA > 255) outA = 255;
                 }
@@ -8387,11 +8411,11 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                     effR = newRgb.r;
                 }
 
-                outR = weighTwoValues(effR, tgtR, 1.0f - weight);
-                outG = weighTwoValues(effG, tgtG, 1.0f - weight);
-                outB = weighTwoValues(effB, tgtB, 1.0f - weight);
+                outR = weighTwoValues(effR, tgtR, weight);
+                outG = weighTwoValues(effG, tgtG, weight);
+                outB = weighTwoValues(effB, tgtB, weight);
                 if (bytesPerPixel == 4) {
-                    outA = weighTwoValues(effA, tgtA, 1.0f - weight);
+                    outA = weighTwoValues(effA, tgtA, weight);
                 }
             }
             else if (brushType == 6) {
@@ -8408,11 +8432,11 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 int srcR = srcPixel[2];
                 int srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
 
-                outR = weighTwoValues(srcR, tgtR, 1.0f - weight);
-                outG = weighTwoValues(srcG, tgtG, 1.0f - weight);
-                outB = weighTwoValues(srcB, tgtB, 1.0f - weight);
+                outR = weighTwoValues(srcR, tgtR, weight);
+                outG = weighTwoValues(srcG, tgtG, weight);
+                outB = weighTwoValues(srcB, tgtB, weight);
                 if (bytesPerPixel == 4) {
-                    outA = weighTwoValues(srcA, tgtA, 1.0f - weight);
+                    outA = weighTwoValues(srcA, tgtA, weight);
                 }
             }
             else if (brushType == 7 || brushType == 8) {
@@ -8432,11 +8456,11 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 int srcR = srcPixel[2];
                 int srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
 
-                outR = weighTwoValues(srcR, tgtR, 1.0f - weight);
-                outG = weighTwoValues(srcG, tgtG, 1.0f - weight);
-                outB = weighTwoValues(srcB, tgtB, 1.0f - weight);
+                outR = weighTwoValues(srcR, tgtR, weight);
+                outG = weighTwoValues(srcG, tgtG, weight);
+                outB = weighTwoValues(srcB, tgtB, weight);
                 if (bytesPerPixel == 4) {
-                    outA = weighTwoValues(srcA, tgtA, 1.0f - weight);
+                    outA = weighTwoValues(srcA, tgtA, weight);
                 }
             }
 

@@ -76277,6 +76277,49 @@ ActPaintBrushLargeNow() {
    thisEraseOpacity := (thisEraserMode=1) ? 255 : thisOpacity
    thisWet := 0.79 + (21 - thisWetness)/100
 
+   hFIFtex := 0
+   texBits := 0
+   texW := 0
+   texH := 0
+   texPitch := 0
+   texBpp := 0
+   If (BrushToolTexture > 1 && brushSize > 0)
+   {
+      texPath := mainExecPath "\resources\brush-texture-" (BrushToolTexture - 1) ".png"
+      hFIFtex := FreeImage_Load(13, texPath, 0)
+      If hFIFtex
+      {
+         thisAR := 1 - Abs(BrushToolAspectRatio)/105
+         brImgSelW := (BrushToolAspectRatio>0) ? brushSize * thisAR : brushSize
+         brImgSelH := (BrushToolAspectRatio<0) ? brushSize * thisAR : brushSize
+         If (brImgSelW < 1)
+            brImgSelW := 1
+         If (brImgSelH < 1)
+            brImgSelH := 1
+         hFIFtexRescaled := trFreeImage_Rescale(hFIFtex, brImgSelW, brImgSelH, 3)
+         FreeImage_UnLoad(hFIFtex)
+         hFIFtex := hFIFtexRescaled
+         
+         If (thisToolAngle != 0 && thisToolAngle != 360)
+         {
+            hFIFtexRotated := FreeImage_Rotate(hFIFtex, thisToolAngle)
+            If hFIFtexRotated
+            {
+               FreeImage_UnLoad(hFIFtex)
+               hFIFtex := hFIFtexRotated
+            }
+         }
+         
+         If hFIFtex
+         {
+            texBits := FreeImage_GetBits(hFIFtex)
+            texPitch := FreeImage_GetStride(hFIFtex)
+            texBpp := FreeImage_GetBPP(hFIFtex)
+            FreeImage_GetImageDimensions(hFIFtex, texW, texH)
+         }
+      }
+   }
+
    dryZeit := A_TickCount
    dryRateZeit := 50 + BrushToolDryingRate*4
    thisDryRate := clampInRange(BrushToolDryingRate/4, 0.5, 20)
@@ -76511,6 +76554,8 @@ ActPaintBrushLargeNow() {
       SetTimer, wrapResizeImageGDIwin, -60
    SetTimer, ResetImgLoadStatus, -100
    lastInvoked := A_TickCount
+   If hFIFtex
+      FreeImage_UnLoad(hFIFtex)
    Return
 
 DrawPaintBrushLargeStep:
@@ -76548,7 +76593,12 @@ DrawPaintBrushLargeStep:
       , "int", thisEffectSat
       , "int", thisEffectLight
       , "int", thisEffectGamma
-      , "int", thisEffectBlur)
+      , "int", thisEffectBlur
+      , "UPtr", texBits
+      , "int", texW
+      , "int", texH
+      , "int", texPitch
+      , "int", texBpp)
 Return
 }
 
