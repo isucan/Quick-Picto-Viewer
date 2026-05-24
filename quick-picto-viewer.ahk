@@ -76154,12 +76154,6 @@ ActPaintBrushLargeNow() {
 
    canApplyFXa := (PasteInPlaceHue!=0 || PasteInPlaceSaturation!=0) && (BrushToolApplyColorFX=1) ? 1 : 0
    canApplyFXb := (PasteInPlaceLight!=0 || PasteInPlaceGamma!=0) && (BrushToolApplyColorFX=1) ? 1 : 0
-   If (BrushToolBlurStrength<3 && canApplyFXa=0 && canApplyFXb=0 && BrushToolType=5)
-   {
-      showTOOLtip("WARNING: No brush effect to apply.")
-      SetTimer, RemoveTooltip, % -msgDisplayTime
-      Return
-   }
 
    interfaceThread.ahkassign("FloodFillSelectionAdj", FloodFillSelectionAdj)
    interfaceThread.ahkassign("liveDrawingBrushTool", liveDrawingBrushTool)
