@@ -8121,3 +8121,333 @@ int reverse_bits(int n) {
   return n;
 }
 */
+
+DLL_API int DLL_CALLCONV PaintBrushLarge(
+    unsigned char* imgData,  // FreeImage pixel buffer (from FreeImage_GetBits)
+    int imgW,                // Image width
+    int imgH,                // Image height
+    int pitch,               // Image pitch/stride (FreeImage_GetPitch)
+    int imgBpp,              // Bits per pixel (24 or 32)
+    int brushType,           // BrushToolType (1-8)
+    double tkX,              // Current stroke point X (image space)
+    double tkY,              // Current stroke point Y (image space)
+    int brushSize,           // Brush diameter
+    int softness,            // BrushToolSoftness (0-100)
+    double angle,            // BrushToolAngle (-180 to 180)
+    double aspectRatio,      // BrushToolAspectRatio (-100 to 100)
+    int brushColor,          // ARGB color
+    int opacity,             // Stroke opacity (0-255)
+    int blendMode,           // BlendMode index
+    int overDraw,            // Air-brush overdraw mode (0/1)
+    int wetness,             // BrushToolWetness
+    double offX,             // Smudge/Cloner offset X
+    double offY,             // Smudge/Cloner offset Y
+    unsigned char* cloneData, // Backup pixel buffer (null if memory limits reached)
+    int clonePitch,          // Backup buffer pitch
+    int eraserMode,          // Eraser mode (1=std, 2=replace/overdraw, 3=restore)
+    int eraseOpacity,        // Erase opacity
+    int useSelArea,          // Selection clip active flag (0/1)
+    int linearGamma,         // Gamma correct flag
+    int flipLayers,          // Flip blend layers flag
+    int bulgePinchFactor,    // Bulge/pinch factor (+ for bulge, - for pinch)
+    int effectHue,           // Effects brush: Hue adjustment
+    int effectSat,           // Effects brush: Saturation adjustment
+    int effectLight,         // Effects brush: Lightness adjustment
+    int effectGamma,         // Effects brush: Gamma adjustment
+    int effectBlur           // Effects brush: Blur strength
+) {
+    if (!imgData || imgW <= 0 || imgH <= 0 || pitch <= 0 || brushSize <= 0)
+        return 0;
+
+    int bytesPerPixel = imgBpp / 8;
+    if (bytesPerPixel != 3 && bytesPerPixel != 4)
+        return 0; // Only support 24-bit (BGR) and 32-bit (BGRA)
+
+    int halfSize = brushSize / 2 + abs(bulgePinchFactor);
+    int startX = clamp((int)(tkX - halfSize), 0, imgW - 1);
+    int endX = clamp((int)(tkX + halfSize), 0, imgW - 1);
+    int startY = clamp((int)(tkY - halfSize), 0, imgH - 1);
+    int endY = clamp((int)(tkY + halfSize), 0, imgH - 1);
+
+    // Parse foreground color channels
+    int brushA = (brushColor >> 24) & 0xFF;
+    int brushR = (brushColor >> 16) & 0xFF;
+    int brushG = (brushColor >> 8) & 0xFF;
+    int brushB = brushColor & 0xFF;
+
+    // Softness calculations
+    double falloff = (100.0 - softness) / 100.0;
+
+    // Angle in radians (for rotated elliptical brush mask)
+    double rad = -angle * M_PI / 180.0;
+    double cosA = cos(rad);
+    double sinA = sin(rad);
+
+    // Calculate semi-axes rx, ry based on aspectRatio (-100 to 100)
+    double thisAR = 1.0 - abs(aspectRatio) / 105.0;
+    double rx = (aspectRatio > 0.0) ? (brushSize * thisAR) / 2.0 : brushSize / 2.0;
+    double ry = (aspectRatio < 0.0) ? (brushSize * thisAR) / 2.0 : brushSize / 2.0;
+    if (rx < 0.5) rx = 0.5;
+    if (ry < 0.5) ry = 0.5;
+
+    for (int px = startX; px <= endX; px++) {
+        for (int py = startY; py <= endY; py++) {
+            // 1. Calculate selection constraints
+            if (useSelArea && clipMaskFilter(px, py, NULL, 0) == 1)
+                continue;
+
+            // 2. Compute rotated coordinates and elliptical mask
+            double dx = px - tkX;
+            double dy = py - tkY;
+
+            // For pinch/bulge, distort coords
+            double src_dx = dx;
+            double src_dy = dy;
+            double dest_radius = brushSize / 2.0 + bulgePinchFactor;
+            if (dest_radius < 0.5) dest_radius = 0.5;
+            double r_dest = sqrt(dx * dx + dy * dy);
+
+            if (brushType == 7 || brushType == 8) {
+                if (r_dest >= dest_radius)
+                    continue;
+                src_dx = dx * ((brushSize / 2.0) / dest_radius);
+                src_dy = dy * ((brushSize / 2.0) / dest_radius);
+            }
+
+            double rotX = src_dx * cosA - src_dy * sinA;
+            double rotY = src_dx * sinA + src_dy * cosA;
+            double dist_norm = sqrt((rotX / rx) * (rotX / rx) + (rotY / ry) * (rotY / ry));
+
+            if (dist_norm > 1.0)
+                continue;
+
+            int mask_val = 255;
+            if (softness > 0) {
+                if (dist_norm >= falloff) {
+                    mask_val = (int)(255.0 * (1.0 - dist_norm) / (1.0 - falloff));
+                    if (mask_val < 0) mask_val = 0;
+                    if (mask_val > 255) mask_val = 255;
+                }
+            }
+
+            if (mask_val == 0)
+                continue;
+
+            // Target pixel pointer in imgData (bottom-up scanline)
+            int iy = imgH - 1 - py;
+            unsigned char* targetPixel = imgData + (INT64)iy * pitch + px * bytesPerPixel;
+
+            // Read target color (BGRA or BGR)
+            int tgtB = targetPixel[0];
+            int tgtG = targetPixel[1];
+            int tgtR = targetPixel[2];
+            int tgtA = (bytesPerPixel == 4) ? targetPixel[3] : 255;
+
+            // Prepare output color
+            int outB = tgtB;
+            int outG = tgtG;
+            int outR = tgtR;
+            int outA = tgtA;
+
+            float weight = (mask_val / 255.0f) * (opacity / 255.0f);
+
+            if (brushType == 1 || brushType == 2) {
+                // Paint brush: Solid/Soft Color
+                // Blend brushColor with target pixel
+                RGBAColor Orgb = { brushB, brushG, brushR, brushA };
+                RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
+                RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, 255 - opacity);
+                
+                // Weigh between blended and target based on mask_val
+                float f = mask_val / 255.0f;
+                outR = weighTwoValues(blended.r, tgtR, 1.0f - f);
+                outG = weighTwoValues(blended.g, tgtG, 1.0f - f);
+                outB = weighTwoValues(blended.b, tgtB, 1.0f - f);
+                if (bytesPerPixel == 4) {
+                    outA = weighTwoValues(blended.a, tgtA, 1.0f - f);
+                }
+            }
+            else if (brushType == 3) {
+                // Cloner brush: sample from cloneData at (px - offX, py - offY)
+                int srcX = clamp((int)round(px - offX), 0, imgW - 1);
+                int srcY = clamp((int)round(py - offY), 0, imgH - 1);
+                unsigned char* srcData = cloneData ? cloneData : imgData;
+                int srcPitch = cloneData ? clonePitch : pitch;
+                int s_iy = imgH - 1 - srcY;
+                unsigned char* srcPixel = srcData + (INT64)s_iy * srcPitch + srcX * bytesPerPixel;
+
+                int srcB = srcPixel[0];
+                int srcG = srcPixel[1];
+                int srcR = srcPixel[2];
+                int srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
+
+                outR = weighTwoValues(srcR, tgtR, 1.0f - weight);
+                outG = weighTwoValues(srcG, tgtG, 1.0f - weight);
+                outB = weighTwoValues(srcB, tgtB, 1.0f - weight);
+                if (bytesPerPixel == 4) {
+                    outA = weighTwoValues(srcA, tgtA, 1.0f - weight);
+                }
+            }
+            else if (brushType == 4) {
+                // Eraser brush
+                if (eraserMode == 3 && cloneData) {
+                    // Restore mode: restore color and alpha from cloneData
+                    int s_iy = imgH - 1 - py;
+                    unsigned char* srcPixel = cloneData + (INT64)s_iy * clonePitch + px * bytesPerPixel;
+                    int srcB = srcPixel[0];
+                    int srcG = srcPixel[1];
+                    int srcR = srcPixel[2];
+                    int srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
+
+                    outR = weighTwoValues(srcR, tgtR, 1.0f - weight);
+                    outG = weighTwoValues(srcG, tgtG, 1.0f - weight);
+                    outB = weighTwoValues(srcB, tgtB, 1.0f - weight);
+                    if (bytesPerPixel == 4) {
+                        outA = weighTwoValues(srcA, tgtA, 1.0f - weight);
+                    }
+                }
+                else if (bytesPerPixel == 4) {
+                    int alpha2 = tgtA;
+                    if (eraserMode == 2) {
+                        // Replace/overdraw alpha
+                        alpha2 = eraseOpacity;
+                    }
+                    else {
+                        // Standard erase: reduce alpha
+                        alpha2 = max(0, tgtA - eraseOpacity);
+                    }
+                    float fintensity = mask_val / 255.0f;
+                    outA = (int)ceil(alpha2 * fintensity + tgtA * (1.0f - fintensity));
+                    if (outA < 0) outA = 0;
+                    if (outA > 255) outA = 255;
+                }
+            }
+            else if (brushType == 5) {
+                // Effects brush: Hue, Saturation, Lightness, Gamma, Blur
+                int effB = tgtB;
+                int effG = tgtG;
+                int effR = tgtR;
+                int effA = tgtA;
+
+                // 1. Box Blur
+                if (effectBlur > 2) {
+                    unsigned char* srcData = cloneData ? cloneData : imgData;
+                    int srcPitch = cloneData ? clonePitch : pitch;
+                    int radius = effectBlur;
+                    int sumB = 0, sumG = 0, sumR = 0, sumA = 0, count = 0;
+                    for (int ny = py - radius; ny <= py + radius; ny++) {
+                        if (ny < 0 || ny >= imgH) continue;
+                        int s_iy = imgH - 1 - ny;
+                        for (int nx = px - radius; nx <= px + radius; nx++) {
+                            if (nx < 0 || nx >= imgW) continue;
+                            unsigned char* p = srcData + (INT64)s_iy * srcPitch + nx * bytesPerPixel;
+                            sumB += p[0];
+                            sumG += p[1];
+                            sumR += p[2];
+                            if (bytesPerPixel == 4) sumA += p[3];
+                            count++;
+                        }
+                    }
+                    if (count > 0) {
+                        effB = sumB / count;
+                        effG = sumG / count;
+                        effR = sumR / count;
+                        effA = (bytesPerPixel == 4) ? (sumA / count) : 255;
+                    }
+                }
+
+                // 2. Lightness and Gamma/Contrast
+                if (effectLight != 0 || effectGamma != 0) {
+                    effR = clamp((int)(effR + effectLight), 0, 255);
+                    effG = clamp((int)(effG + effectLight), 0, 255);
+                    effB = clamp((int)(effB + effectLight), 0, 255);
+                    if (effectGamma != 0) {
+                        double factor = (effectGamma + 100.0) / 100.0;
+                        effR = clamp((int)(128.0 + (effR - 128.0) * factor), 0, 255);
+                        effG = clamp((int)(128.0 + (effG - 128.0) * factor), 0, 255);
+                        effB = clamp((int)(128.0 + (effB - 128.0) * factor), 0, 255);
+                    }
+                }
+
+                // 3. Hue and Saturation using built-in HSLColor
+                if (effectHue != 0 || effectSat != 0) {
+                    RGBAColor rgb = { effB, effG, effR, effA };
+                    HSLColor hsl = rgb.ConvertRGBtoHSL();
+                    
+                    hsl.h += effectHue;
+                    while (hsl.h > 360.0) hsl.h -= 360.0;
+                    while (hsl.h < 0.0) hsl.h += 360.0;
+
+                    double satFactor = (effectSat + 100.0) / 100.0;
+                    hsl.s = clamp(hsl.s * satFactor, 0.0, 1.0);
+
+                    RGBColorI newRgb = hsl.ConvertHSLtoRGB();
+                    effB = newRgb.b;
+                    effG = newRgb.g;
+                    effR = newRgb.r;
+                }
+
+                outR = weighTwoValues(effR, tgtR, 1.0f - weight);
+                outG = weighTwoValues(effG, tgtG, 1.0f - weight);
+                outB = weighTwoValues(effB, tgtB, 1.0f - weight);
+                if (bytesPerPixel == 4) {
+                    outA = weighTwoValues(effA, tgtA, 1.0f - weight);
+                }
+            }
+            else if (brushType == 6) {
+                // Smudge brush: grab pixels from previous offset position
+                int srcX = clamp((int)round(px - offX), 0, imgW - 1);
+                int srcY = clamp((int)round(py - offY), 0, imgH - 1);
+                unsigned char* srcData = cloneData ? cloneData : imgData;
+                int srcPitch = cloneData ? clonePitch : pitch;
+                int s_iy = imgH - 1 - srcY;
+                unsigned char* srcPixel = srcData + (INT64)s_iy * srcPitch + srcX * bytesPerPixel;
+
+                int srcB = srcPixel[0];
+                int srcG = srcPixel[1];
+                int srcR = srcPixel[2];
+                int srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
+
+                outR = weighTwoValues(srcR, tgtR, 1.0f - weight);
+                outG = weighTwoValues(srcG, tgtG, 1.0f - weight);
+                outB = weighTwoValues(srcB, tgtB, 1.0f - weight);
+                if (bytesPerPixel == 4) {
+                    outA = weighTwoValues(srcA, tgtA, 1.0f - weight);
+                }
+            }
+            else if (brushType == 7 || brushType == 8) {
+                // Pinch / Bulge brush: scale coordinate mapping
+                double srcX = tkX + src_dx;
+                double srcY = tkY + src_dy;
+                int isrcX = clamp((int)round(srcX), 0, imgW - 1);
+                int isrcY = clamp((int)round(srcY), 0, imgH - 1);
+
+                unsigned char* srcData = cloneData ? cloneData : imgData;
+                int srcPitch = cloneData ? clonePitch : pitch;
+                int s_iy = imgH - 1 - isrcY;
+                unsigned char* srcPixel = srcData + (INT64)s_iy * srcPitch + isrcX * bytesPerPixel;
+
+                int srcB = srcPixel[0];
+                int srcG = srcPixel[1];
+                int srcR = srcPixel[2];
+                int srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
+
+                outR = weighTwoValues(srcR, tgtR, 1.0f - weight);
+                outG = weighTwoValues(srcG, tgtG, 1.0f - weight);
+                outB = weighTwoValues(srcB, tgtB, 1.0f - weight);
+                if (bytesPerPixel == 4) {
+                    outA = weighTwoValues(srcA, tgtA, 1.0f - weight);
+                }
+            }
+
+            // Write back to imgData
+            targetPixel[0] = clamp(outB, 0, 255);
+            targetPixel[1] = clamp(outG, 0, 255);
+            targetPixel[2] = clamp(outR, 0, 255);
+            if (bytesPerPixel == 4) {
+                targetPixel[3] = clamp(outA, 0, 255);
+            }
+        }
+    }
+    return 1;
+}

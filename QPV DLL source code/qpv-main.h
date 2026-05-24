@@ -1096,3 +1096,37 @@ struct RGBA16color {
     }
 };
 
+DLL_API int DLL_CALLCONV PaintBrushLarge(
+    unsigned char* imgData,  // FreeImage pixel buffer (from FreeImage_GetBits)
+    int imgW,                // Image width
+    int imgH,                // Image height
+    int pitch,               // Image pitch/stride (FreeImage_GetPitch)
+    int imgBpp,              // Bits per pixel (24 or 32)
+    int brushType,           // BrushToolType (1-8)
+    double tkX,              // Current stroke point X (image space)
+    double tkY,              // Current stroke point Y (image space)
+    int brushSize,           // Brush diameter
+    int softness,            // BrushToolSoftness (0-100)
+    double angle,            // BrushToolAngle (-180 to 180)
+    double aspectRatio,      // BrushToolAspectRatio (-100 to 100)
+    int brushColor,          // ARGB color
+    int opacity,             // Stroke opacity (0-255)
+    int blendMode,           // BlendMode index
+    int overDraw,            // Air-brush overdraw mode (0/1)
+    int wetness,             // BrushToolWetness
+    double offX,             // Smudge/Cloner offset X
+    double offY,             // Smudge/Cloner offset Y
+    unsigned char* cloneData, // Backup pixel buffer (null if memory limits reached)
+    int clonePitch,          // Backup buffer pitch
+    int eraserMode,          // Eraser mode (1=std, 2=replace/overdraw, 3=restore)
+    int eraseOpacity,        // Erase opacity
+    int useSelArea,          // Selection clip active flag (0/1)
+    int linearGamma,         // Gamma correct flag
+    int flipLayers,          // Flip blend layers flag
+    int bulgePinchFactor,    // Bulge/pinch factor (+ for bulge, - for pinch)
+    int effectHue,           // Effects brush: Hue adjustment
+    int effectSat,           // Effects brush: Saturation adjustment
+    int effectLight,         // Effects brush: Lightness adjustment
+    int effectGamma,         // Effects brush: Gamma adjustment
+    int effectBlur           // Effects brush: Blur strength
+);
