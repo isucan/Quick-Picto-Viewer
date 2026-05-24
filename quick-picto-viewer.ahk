@@ -76135,16 +76135,6 @@ ActPaintBrushLargeNow() {
    If (A_TickCount - lastOtherWinClose<450)
       Return
 
-   If mergeViewPortRotationImgEditing()
-   {
-      dummyTimerDelayiedImageDisplay(10)
-      SoundBeep 900, 100
-      Return
-   }
-
-   If mergeViewPortEffectsImgEditing(A_ThisFunc, 0, 0, 0)
-      Return
-
    If (!viewportQPVimage.imgHandle)
    {
       showTOOLtip("ERROR: FreeImage handle seems to be inexistent. Failure occured in " A_ThisFunc "()")
