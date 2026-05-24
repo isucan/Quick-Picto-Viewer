@@ -76280,7 +76280,7 @@ ActPaintBrushLargeNow() {
    If (BrushToolTexture > 1 && brushSize > 0)
    {
       texPath := mainExecPath "\resources\brush-texture-" (BrushToolTexture - 1) ".png"
-      hFIFtex := FreeImage_Load(13, texPath, 0)
+      hFIFtex := FreeImage_Load(texPath, 13, 0)
       If hFIFtex
       {
          thisAR := 1 - Abs(BrushToolAspectRatio)/105
