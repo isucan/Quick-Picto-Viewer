@@ -76490,6 +76490,7 @@ ActPaintBrushLargeNow() {
          If (thisIndex=1)
             oMx := tkX, oMy := tkY
 
+         killQPVscreenImgSection()
          dummyResizeImageGDIwin()
       }
    }
