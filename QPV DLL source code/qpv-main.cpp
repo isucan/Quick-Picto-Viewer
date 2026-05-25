@@ -8228,13 +8228,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                     int texBytes = texBpp / 8;
                     int t_iy = texH - 1 - ty;
                     unsigned char* texPixel = texData + (INT64)t_iy * texPitch + tx * texBytes;
-                    if (texBytes == 4) {
-                        mask_val = texPixel[3];
-                    } else if (texBytes == 3) {
-                        mask_val = (texPixel[0] + texPixel[1] + texPixel[2]) / 3;
-                    } else if (texBytes == 1) {
-                        mask_val = texPixel[0];
-                    }
+                    mask_val = texPixel[0];
                 } else {
                     mask_val = 0;
                 }

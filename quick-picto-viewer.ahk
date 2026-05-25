@@ -1,4 +1,4 @@
-; Script details:
+﻿; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -76154,6 +76154,12 @@ ActPaintBrushLargeNow() {
 
    canApplyFXa := (PasteInPlaceHue!=0 || PasteInPlaceSaturation!=0) && (BrushToolApplyColorFX=1) ? 1 : 0
    canApplyFXb := (PasteInPlaceLight!=0 || PasteInPlaceGamma!=0) && (BrushToolApplyColorFX=1) ? 1 : 0
+   ; If (BrushToolBlurStrength<3 && canApplyFXa=0 && canApplyFXb=0 && BrushToolType=5)
+   ; {
+   ;    showTOOLtip("WARNING: No brush effect to apply.")
+   ;    SetTimer, RemoveTooltip, % -msgDisplayTime
+   ;    Return
+   ; }
 
    interfaceThread.ahkassign("FloodFillSelectionAdj", FloodFillSelectionAdj)
    interfaceThread.ahkassign("liveDrawingBrushTool", liveDrawingBrushTool)
@@ -76279,8 +76285,8 @@ ActPaintBrushLargeNow() {
    texBpp := 0
    If (BrushToolTexture > 1 && brushSize > 0)
    {
-      texPath := mainExecPath "\resources\brush-texture-" (BrushToolTexture - 1) ".png"
-      hFIFtex := FreeImage_Load(texPath, 13, 0)
+      texPath := mainExecPath "\resources\brush-texture-" BrushToolTexture ".png"
+      hFIFtex := FreeImage_Load(texPath)
       If hFIFtex
       {
          thisAR := 1 - Abs(BrushToolAspectRatio)/105
