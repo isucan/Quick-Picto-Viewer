@@ -8138,7 +8138,6 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int brushColor,          // ARGB color
     int opacity,             // Stroke opacity (0-255)
     int blendMode,           // BlendMode index
-    int overDraw,            // Air-brush overdraw mode (0/1)
     int wetness,             // BrushToolWetness
     double offX,             // Smudge/Cloner offset X
     double offY,             // Smudge/Cloner offset Y
@@ -8210,9 +8209,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             double src_dx = dx;
             double src_dy = dy;
             double dest_radius = brushSize / 2.0 + bulgePinchFactor;
-            if (dest_radius < 0.5) dest_radius = 0.5;
-            double r_dest = sqrt(dx * dx + dy * dy);
+            if (dest_radius < 0.5)
+               dest_radius = 0.5;
 
+            double r_dest = sqrt(dx * dx + dy * dy);
             if (brushType == 7 || brushType == 8) {
                 if (r_dest >= dest_radius)
                     continue;
@@ -8269,21 +8269,18 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int outA = tgtA;
 
             float weight = (mask_val / 255.0f) * (opacity / 255.0f);
-
+            int weightInt = clamp(weight * 255.0f, 0.0f, 255.0f);
             if (brushType == 1 || brushType == 2) {
                 // Paint brush: Solid/Soft Color
                 // Blend brushColor with target pixel
                 RGBAColor Orgb = { brushB, brushG, brushR, brushA };
                 RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
-                RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, 255 - opacity);
-                
-                // Weigh between blended and target based on mask_val
-                float f = mask_val / 255.0f;
-                outR = weighTwoValues(blended.r, tgtR, f);
-                outG = weighTwoValues(blended.g, tgtG, f);
-                outB = weighTwoValues(blended.b, tgtB, f);
+                RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, 255 - weightInt);
+                outR = blended.r;
+                outG = blended.g;
+                outB = blended.b;
                 if (bytesPerPixel == 4) {
-                    outA = weighTwoValues(blended.a, tgtA, f);
+                    outA = blended.a;
                 }
             }
             else if (brushType == 3) {
@@ -8300,11 +8297,15 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 int srcR = srcPixel[2];
                 int srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
 
-                outR = weighTwoValues(srcR, tgtR, weight);
-                outG = weighTwoValues(srcG, tgtG, weight);
-                outB = weighTwoValues(srcB, tgtB, weight);
+                RGBAColor Orgb = { srcB, srcG, srcR, srcA };
+                RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
+                RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, 255 - weightInt);
+
+                outR = blended.r;
+                outG = blended.g;
+                outB = blended.b;
                 if (bytesPerPixel == 4) {
-                    outA = weighTwoValues(srcA, tgtA, weight);
+                    outA = blended.a;
                 }
             }
             else if (brushType == 4) {
@@ -8404,7 +8405,9 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                     effG = newRgb.g;
                     effR = newRgb.r;
                 }
-
+                effB = clamp(effB, 0, 255);
+                effG = clamp(effG, 0, 255);
+                effR = clamp(effR, 0, 255);
                 outR = weighTwoValues(effR, tgtR, weight);
                 outG = weighTwoValues(effG, tgtG, weight);
                 outB = weighTwoValues(effB, tgtB, weight);

@@ -2342,8 +2342,9 @@ initQPVmainDLL(modus:=0) {
    }
 
    Static srcDll := "e:\Sucan twins\_small-apps\AutoHotkey\my scripts\fast-image-viewer\cPlusPlus\qpv-main\x64\Release\qpvmain.dll"
-    If (A_PtrSize=8 && InStr(A_ScriptDir, "sucan twins") && !InStr(A_ScriptDir, "\ai-dev") && !A_IsCompiled && FileExist(srcDll))
-      DllPath := srcDll
+   Static AIsrcDll := "E:\Sucan twins\_small-apps\AutoHotkey\my scripts\fast-image-viewer\ai-dev\QPV DLL source code\x64\Release\qpvmain.dll"
+   If (A_PtrSize=8 && InStr(A_ScriptDir, "sucan twins") && !A_IsCompiled && FileExist(srcDll))
+      DllPath := (InStr(A_ScriptDir, "\ai-dev") && FileExist(AIsrcDll)) ?  AIsrcDll : srcDll
 
    qpvMainDll := DllCall("LoadLibraryW", "WStr", DllPath, "UPtr")
    addJournalEntry("INIT main QPV dll: " A_LastError "==" qpvMainDll "==" DllPath)
@@ -44239,12 +44240,12 @@ createLivePreviewBrush() {
     Gdip_GraphicsClear(G, "0xFF888888")
     brushSize := (BrushToolDoubleSize=1) ? brushToolSize*2 : brushToolSize
     whichBitmap := useGdiBitmap()
-    If ((BrushToolType=3 || BrushToolType=5) && CurrentPanelTab=2)
+    If ((BrushToolType=3 || BrushToolType=5) && CurrentPanelTab=2 && !viewportQPVimage.imgHandle)
     {
        brushu := createClonedBrushBitmap(brushSize, 101 - BrushToolSoftness, BrushToolAngle, BrushToolAspectRatio, whichBitmap, 0, 0, 1, 1, 1)
        applyPersonalizedColorsBMP(brushu, 1, BrushToolBlurStrength, BrushToolApplyColorFX)
        thisMainOpacity := 1
-    } Else If (BrushToolType=3 && CurrentPanelTab=1)
+    } Else If (BrushToolType=3 && CurrentPanelTab=1 && !viewportQPVimage.imgHandle)
     {
        brushu := createClonedBrushBitmap(brushSize, 101 - BrushToolSoftness, BrushToolAngle, BrushToolAspectRatio, whichBitmap, 0, 0, 1, 0, 1)
        thisMainOpacity := BrushToolAopacity / 255
@@ -76154,13 +76155,6 @@ ActPaintBrushLargeNow() {
 
    canApplyFXa := (PasteInPlaceHue!=0 || PasteInPlaceSaturation!=0) && (BrushToolApplyColorFX=1) ? 1 : 0
    canApplyFXb := (PasteInPlaceLight!=0 || PasteInPlaceGamma!=0) && (BrushToolApplyColorFX=1) ? 1 : 0
-   ; If (BrushToolBlurStrength<3 && canApplyFXa=0 && canApplyFXb=0 && BrushToolType=5)
-   ; {
-   ;    showTOOLtip("WARNING: No brush effect to apply.")
-   ;    SetTimer, RemoveTooltip, % -msgDisplayTime
-   ;    Return
-   ; }
-
    interfaceThread.ahkassign("FloodFillSelectionAdj", FloodFillSelectionAdj)
    interfaceThread.ahkassign("liveDrawingBrushTool", liveDrawingBrushTool)
    vpWinClientSize(mainWidth, mainHeight)
@@ -76210,8 +76204,8 @@ ActPaintBrushLargeNow() {
    If (BrushToolType=7)
       thisBulgePinchFactor := -BrushToolWetness - 1
 
-   thisToolSoftness := BrushToolSoftness
-   If (BrushToolRandomSoftness>0)
+   thisToolSoftness := (BrushToolType>1) ? BrushToolSoftness : 1
+   If (BrushToolRandomSoftness>0 && BrushToolType>1)
    {
       gR := BrushToolRandomSoftness
       gR := Randomizer(-gR, gR, 2, 3)
@@ -76236,36 +76230,15 @@ ActPaintBrushLargeNow() {
 
    advancedSoftBrush := (BrushToolType=2 && (BrushToolOverDraw=0 || BrushToolBlendMode>1)) ? 1 : 0
    thisOpacity := (thisUseSecondaryColor=1) ? BrushToolBopacity : BrushToolAopacity
-   ppiu := isVarEqualTo(BrushToolType, 1, 4, 5)
-   If (ppiu=1 && BrushToolOverDraw=1 || ppiu!=1) && (advancedSoftBrush!=1)
-   {
-      thisMainOpacity := clampInRange(Round(thisMainOpacity/2.5 + 1 + BrushToolDryingRate*1.5), 1, 255)
-      thisOpacity := clampInRange(Round(thisOpacity/2.5 + 1 + BrushToolDryingRate*1.5), 1, 255)
-   }
-
    hFIFimgA := 0
-   cloneBits := 0
-   clonePitch := 0
-   If (BrushToolType=3 || BrushToolType>=5 || BrushToolType=4 && BrushToolEraserRestore=1 || advancedSoftBrush=1)
-   {
-      recordUndoLevelHugeImagesNow("entire-vp", 0, 0, 0, 0, 0)
-      obju := recordUndoLevelHugeImagesNow("get-bmp", 0, 0, 0)
-      hFIFimgA := obju[1]
-      If hFIFimgA
-      {
-         cloneBits := FreeImage_GetBits(hFIFimgA)
-         clonePitch := FreeImage_GetStride(hFIFimgA)
-      }
-   } Else {
-      If (undoLevelsRecorded < 2 && preventUndoLevels != 1)
-         recordUndoLevelHugeImagesNow("entire-vp", 0, 0, 0, 0, 0)
-   }
-
+   cloneBits := clonePitch := 0
+   defineRelativeSelCoords(imgW, imgH)
+   objuSel := InitHugeImgSelPath(0, imgW, imgH)
+   zrr := recordUndoLevelHugeImagesNow(objuSel.bX1, objuSel.bY1, objuSel.bImgSelW, objuSel.bImgSelH)
    useSelArea := 0
-   If (editingSelectionNow=1)
+   If (editingSelectionNow=1 && BrushToolOutsideSelection>1)
    {
       useSelArea := 1
-      objuSel := InitHugeImgSelPath(0, imgW, imgH)
       thisInvert := BrushToolOutsideSelection - 1
       QPV_PrepareHugeImgSelectionArea(objuSel.x1, objuSel.y1, objuSel.x2 - 1, objuSel.y2 - 1, objuSel.imgSelW, objuSel.imgSelH, EllipseSelectMode, VPselRotation, 0, thisInvert, "a", "a", 1)
    }
@@ -76277,13 +76250,10 @@ ActPaintBrushLargeNow() {
    thisEraseOpacity := (thisEraserMode=1) ? 255 : thisOpacity
    thisWet := 0.79 + (21 - thisWetness)/100
 
-   hFIFtex := 0
-   texBits := 0
-   texW := 0
-   texH := 0
-   texPitch := 0
-   texBpp := 0
-   If (BrushToolTexture > 1 && brushSize > 0)
+   hFIFtex := texBits := 0
+   texPitch := texBpp := 0
+   texW := texH := 0
+   If (BrushToolTexture>1 && brushSize>2 && BrushToolType>1)
    {
       texPath := mainExecPath "\resources\brush-texture-" BrushToolTexture ".png"
       hFIFtex := FreeImage_Load(texPath)
@@ -76323,7 +76293,6 @@ ActPaintBrushLargeNow() {
    dryZeit := A_TickCount
    dryRateZeit := 50 + BrushToolDryingRate*4
    thisDryRate := clampInRange(BrushToolDryingRate/4, 0.5, 20)
-   
    isUserStepu := (brushToolStepping=1 || brushToolStepping=2 || brushToolStepping=251) ? 0 : 1
    If (brushSize<2)
       isUserStepu := 0
@@ -76559,8 +76528,7 @@ ActPaintBrushLargeNow() {
    Return
 
 DrawPaintBrushLargeStep:
-   overDraw := BrushToolOverDraw
-   colorARGB := (thisMainOpacity << 24) | ("0x" startToolColor)
+   colorARGB := "0x" Format("{1:x}", 255) startToolColor
    DllCall("qpvmain.dll\PaintBrushLarge"
       , "UPtr", imgBits
       , "int", imgW
@@ -76577,7 +76545,6 @@ DrawPaintBrushLargeStep:
       , "int", colorARGB
       , "int", thisOpacity
       , "int", BrushToolBlendMode - 1
-      , "int", overDraw
       , "int", thisWetness
       , "double", cur_offX
       , "double", cur_offY
