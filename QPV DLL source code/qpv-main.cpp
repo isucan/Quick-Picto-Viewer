@@ -8195,6 +8195,80 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     if (rx < 0.5) rx = 0.5;
     if (ry < 0.5) ry = 0.5;
 
+    // Pre-calculate blurred ROI if needed
+    cv::Mat blurredRoi;
+    int roiStartX = 0, roiEndX = 0, roiStartY = 0, roiEndY = 0;
+    bool hasBlurredRoi = false;
+
+    // LUT and scaling variables for brush type 5
+    int brushHue = effectHue;
+    int brushSat = (int)round(effectSat * 655.35);
+    int brushBright = effectLight * 257;
+    int brushContra = (int)round(effectGamma * 655.30);
+    if (brushContra > 65525)
+        brushContra = 65525;
+
+    float fiBright = 0.0f;
+    float factorContrast = 0.0f;
+    float fiContra = 0.0f;
+    float saturateFactor = 0.0f;
+
+    if (brushType == 5) {
+        // Prepare LUT tables as in AdjustImageColorsPrecise
+        if (brushBright < 0) {
+            double zamma = 1.0f / ((float)(77069.0f - brushBright) / 77069.0f);
+            for (int i = 0; i < 65536; i++) {
+                LUTgammaBright[i] = gammaMathsInt16(i, zamma);
+            }
+        }
+
+        fiBright = (brushBright > 0) ? brushBright / 32768.0f : -1.0f * int_to_float[-brushBright];
+        if (brushBright != 0) {
+            for (int i = 0; i < 65536; i++) {
+                LUTbright[i] = brightMathsInt16(i, fiBright);
+            }
+        }
+
+        factorContrast = brushContra / 98302.0f;
+        fiContra = (65536.5f * (brushContra + 65535.0f)) / (65535.0f * (65536.5f - brushContra));
+        if (brushContra != 0) {
+            for (int i = 0; i < 65536; i++) {
+                LUTcontra[i] = contraMathsInt16(i, fiContra, 32768);
+            }
+        }
+
+        saturateFactor = (brushSat < 0) ? (65535.0f - abs(brushSat)) / 131070.0f : 0.5f + brushSat / 131070.0f;
+
+        if (effectBlur > 2) {
+            int radius = effectBlur;
+            roiStartX = clamp(startX - radius, 0, imgW - 1);
+            roiEndX = clamp(endX + radius, 0, imgW - 1);
+            roiStartY = clamp(startY - radius, 0, imgH - 1);
+            roiEndY = clamp(endY + radius, 0, imgH - 1);
+
+            int roiW = roiEndX - roiStartX + 1;
+            int roiH = roiEndY - roiStartY + 1;
+
+            if (roiW > 0 && roiH > 0) {
+                unsigned char* srcData = cloneData ? cloneData : imgData;
+                int srcPitch = cloneData ? clonePitch : pitch;
+                int clr = (bytesPerPixel == 4) ? CV_8UC4 : CV_8UC3;
+
+                cv::Mat srcMat(imgH, imgW, clr, srcData, srcPitch);
+                // Translate the vertical range [roiStartY, roiEndY] from bottom-up image coordinates 
+                // to standard memory coordinates.
+                // py = roiStartY (bottom row) -> memory row = imgH - 1 - roiStartY (largest memory index)
+                // py = roiEndY (top row) -> memory row = imgH - 1 - roiEndY (smallest memory index)
+                cv::Rect roi(roiStartX, imgH - 1 - roiEndY, roiW, roiH);
+                cv::Mat srcRoi = srcMat(roi);
+
+                int kernelSize = 2 * radius + 1;
+                cv::blur(srcRoi, blurredRoi, cv::Size(kernelSize, kernelSize));
+                hasBlurredRoi = true;
+            }
+        }
+    }
+
     for (int px = startX; px <= endX; px++) {
         for (int py = startY; py <= endY; py++) {
             // 1. Calculate selection constraints
@@ -8348,63 +8422,39 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 int effR = tgtR;
                 int effA = tgtA;
 
-                // 1. Box Blur
-                if (effectBlur > 2) {
-                    unsigned char* srcData = cloneData ? cloneData : imgData;
-                    int srcPitch = cloneData ? clonePitch : pitch;
-                    int radius = effectBlur;
-                    int sumB = 0, sumG = 0, sumR = 0, sumA = 0, count = 0;
-                    for (int ny = py - radius; ny <= py + radius; ny++) {
-                        if (ny < 0 || ny >= imgH) continue;
-                        int s_iy = imgH - 1 - ny;
-                        for (int nx = px - radius; nx <= px + radius; nx++) {
-                            if (nx < 0 || nx >= imgW) continue;
-                            unsigned char* p = srcData + (INT64)s_iy * srcPitch + nx * bytesPerPixel;
-                            sumB += p[0];
-                            sumG += p[1];
-                            sumR += p[2];
-                            if (bytesPerPixel == 4) sumA += p[3];
-                            count++;
+                // 1. Box Blur using OpenCV
+                if (hasBlurredRoi) {
+                    int localX = px - roiStartX;
+                    int localY = roiEndY - py;
+                    if (localX >= 0 && localX < blurredRoi.cols && localY >= 0 && localY < blurredRoi.rows) {
+                        const unsigned char* blurredPixel = blurredRoi.ptr<unsigned char>(localY, localX);
+                        effB = blurredPixel[0];
+                        effG = blurredPixel[1];
+                        effR = blurredPixel[2];
+                        if (bytesPerPixel == 4) {
+                            effA = blurredPixel[3];
                         }
                     }
-                    if (count > 0) {
-                        effB = sumB / count;
-                        effG = sumG / count;
-                        effR = sumR / count;
-                        effA = (bytesPerPixel == 4) ? (sumA / count) : 255;
-                    }
                 }
 
-                // 2. Lightness and Gamma/Contrast
-                if (effectLight != 0 || effectGamma != 0) {
-                    effR = clamp((int)(effR + effectLight), 0, 255);
-                    effG = clamp((int)(effG + effectLight), 0, 255);
-                    effB = clamp((int)(effB + effectLight), 0, 255);
-                    if (effectGamma != 0) {
-                        double factor = (effectGamma + 100.0) / 100.0;
-                        effR = clamp((int)(128.0 + (effR - 128.0) * factor), 0, 255);
-                        effG = clamp((int)(128.0 + (effG - 128.0) * factor), 0, 255);
-                        effB = clamp((int)(128.0 + (effB - 128.0) * factor), 0, 255);
-                    }
+                // 2. Lightness, Gamma/Contrast, Hue, Saturation adjustments using RGBA16color
+                RGBA16color pixel = { char_to_int[effB], char_to_int[effG], char_to_int[effR], char_to_int[effA] };
+                if (brushBright != 0) {
+                    pixel.brightness(brushBright, 1, 0, fiBright);
                 }
-
-                // 3. Hue and Saturation using built-in HSLColor
-                if (effectHue != 0 || effectSat != 0) {
-                    RGBAColor rgb = { effB, effG, effR, effA };
-                    HSLColor hsl = rgb.ConvertRGBtoHSL();
-                    
-                    hsl.h += effectHue;
-                    while (hsl.h > 360.0) hsl.h -= 360.0;
-                    while (hsl.h < 0.0) hsl.h += 360.0;
-
-                    double satFactor = (effectSat + 100.0) / 100.0;
-                    hsl.s = clamp(hsl.s * satFactor, 0.0, 1.0);
-
-                    RGBColorI newRgb = hsl.ConvertHSLtoRGB();
-                    effB = newRgb.b;
-                    effG = newRgb.g;
-                    effR = newRgb.r;
+                if (brushContra != 0) {
+                    pixel.contrast(brushContra, 0, linearGamma, factorContrast, 0, fiContra);
                 }
+                if (brushHue != 0) {
+                    pixel.hueRotate(brushHue, saturateFactor, 1, brushSat);
+                }
+                if (brushSat != 0) {
+                    pixel.saturation(brushSat, 1, linearGamma, saturateFactor);
+                }
+                effB = int_to_char[pixel.b];
+                effG = int_to_char[pixel.g];
+                effR = int_to_char[pixel.r];
+                effA = int_to_char[pixel.a];
                 effB = clamp(effB, 0, 255);
                 effG = clamp(effG, 0, 255);
                 effR = clamp(effR, 0, 255);
