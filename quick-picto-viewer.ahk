@@ -75627,7 +75627,7 @@ ActPaintBrushNow() {
    thisOpacity := (thisUseSecondaryColor=1) ? BrushToolBopacity : BrushToolAopacity
    thisFloatOpacity := thisOpacity/255
    ppiu := isVarEqualTo(BrushToolType, 1, 4, 5)
-   If (ppiu=1 && BrushToolOverDraw=1 || ppiu!=1) && (advancedSoftBrush!=1)
+   If (ppiu=1 && BrushToolOverDraw=1 || ppiu!=1) && (advancedSoftBrush!=1 && BrushToolType!=4)
    {
       thisMainOpacity := clampInRange(Round(thisMainOpacity/2.5 + 1 + BrushToolDryingRate*1.5), 1, 255)
       thisOpacity := clampInRange(Round(thisOpacity/2.5 + 1 + BrushToolDryingRate*1.5), 1, 255)
@@ -75714,7 +75714,7 @@ ActPaintBrushNow() {
    If (BrushToolEraserRestore=1)
       thisEraserMode := 3
 
-   thisEraseOpacity := (thisEraserMode=1) ? 255 - thisEraseOpacity : thisOpacity
+   thisEraseOpacity := thisOpacity
    thisWet := 0.79 + (21 - thisWetness)/100
    Gdip_GraphicsClear(2NDglPG, "0x00" WindowBgrColor)
    r2 := doLayeredWinUpdate(A_ThisFunc, hGDIinfosWin, 2NDglHDC)
@@ -75753,14 +75753,14 @@ ActPaintBrushNow() {
       If (BrushToolRandomPosX>0)
       {
          gR := Ceil(brushSize*(BrushToolRandomPosX/100))
-         gR := Randomizer(-gR, gR, 3, 6)
+         gR := Ceil(Randomizer(-gR, gR, 3, 6) * zoomLevel)
          mX += gR
       }
 
       If (BrushToolRandomPosY>0)
       {
          gR := Ceil(brushSize*(BrushToolRandomPosY/100))
-         gR := Randomizer(-gR, gR, 3, 7)
+         gR := Ceil(Randomizer(-gR, gR, 3, 7) * zoomLevel)
          mY += gR
       }
 
@@ -76172,7 +76172,7 @@ ActPaintBrushLargeNow() {
       thisUseSecondaryColor := !BrushToolUseSecondaryColor
 
    o_startToolColor := startToolColor := (thisUseSecondaryColor=1) ? BrushToolBcolor : BrushToolAcolor
-   o_startToolColor := startToolColor := RandomizeBrushColor(startToolColor)
+   ; o_startToolColor := startToolColor := RandomizeBrushColor(startToolColor)
    thisMainOpacity := (thisUseSecondaryColor=1) ? BrushToolBopacity : BrushToolAopacity
 
    MouseCoords2Image(mX, mY, 0, prevDestPosX, prevDestPosY, prevResizedVPimgW, prevResizedVPimgH, kX, kY, 0, 1, imgW, imgH)
@@ -76243,13 +76243,7 @@ ActPaintBrushLargeNow() {
       QPV_PrepareHugeImgSelectionArea(objuSel.x1, objuSel.y1, objuSel.x2 - 1, objuSel.y2 - 1, objuSel.imgSelW, objuSel.imgSelH, EllipseSelectMode, VPselRotation, 0, thisInvert, "a", "a", 1)
    }
 
-   thisEraserMode := (BrushToolOverDraw=1) ? 2 : 1
-   If (BrushToolEraserRestore=1)
-      thisEraserMode := 3
-
-   thisEraseOpacity := (thisEraserMode=1) ? 255 : thisOpacity
    thisWet := 0.79 + (21 - thisWetness)/100
-
    hFIFtex := texBits := 0
    texPitch := texBpp := 0
    texW := texH := 0
@@ -76334,18 +76328,18 @@ ActPaintBrushLargeNow() {
       If (BrushToolRandomPosX>0)
       {
          gR := Ceil(brushSize*(BrushToolRandomPosX/100))
-         gR := Randomizer(-gR, gR, 3, 6)
+         gR := Ceil(Randomizer(-gR, gR, 3, 6) * zoomLevel)
          mX += gR
       }
 
       If (BrushToolRandomPosY>0)
       {
          gR := Ceil(brushSize*(BrushToolRandomPosY/100))
-         gR := Randomizer(-gR, gR, 3, 7)
+         gR := Ceil(Randomizer(-gR, gR, 3, 7) * zoomLevel)
          mY += gR
       }
 
-      If (BrushToolType<3 && BrushToolWetness>0) || (BrushToolType=3 && BrushToolDynamicCloner=1)
+      If (BrushToolType<3 || BrushToolType=4 || BrushToolType=5)
       {
          If (BrushToolRandomSize>0)
          {
@@ -76354,7 +76348,7 @@ ActPaintBrushLargeNow() {
             brushSize := clampInRange(o_brushSize + gR, o_brushSize//3 + 2, o_brushSize + Abs(gR))
          }
 
-         If (BrushToolRandomSoftness>0)
+         If (BrushToolRandomSoftness>0 && BrushToolType>1)
          {
             gR := BrushToolRandomSoftness
             gR := Randomizer(-gR, gR, 2, 3)
@@ -76379,7 +76373,6 @@ ActPaintBrushLargeNow() {
       mX := (FlipImgH=1) ? mainWidth - mX : mX
       mY := (FlipImgV=1) ? mainHeight - mY : mY
       MouseCoords2Image(mX, mY, 0, prevDestPosX, prevDestPosY, prevResizedVPimgW, prevResizedVPimgH, kX, kY, 0, 1, imgW, imgH)
-
       If (brushSize>1)
       {
          If isDotInRect(kX, kY, prevMX - stepu, prevMX + stepu, prevMY - stepu, prevMY + stepu)
@@ -76448,12 +76441,13 @@ ActPaintBrushLargeNow() {
 
             offX := oMx - tkX
             offY := oMy - tkY
-
             If (BrushToolType<3 && BrushToolWetness>0)
             {
                coloruY := getPixelColorAvgFreeImage(viewportQPVimage.imgHandle, tkX, tkY, "0xFF" o_startToolColor)
                startToolColor := SubStr(MixARGB(coloruY, "0xFF" startToolColor, thisWet), 5)
-            }
+               startToolColor := RandomizeBrushColor(startToolColor)
+            } Else If (BrushToolType<3)
+               startToolColor := RandomizeBrushColor(o_startToolColor)
 
             cur_tkX := tkX
             cur_tkY := tkY
@@ -76507,7 +76501,7 @@ ActPaintBrushLargeNow() {
       }
    }
 
-   If (thisIndex > 0)
+   If (thisIndex>0)
    {
       killQPVscreenImgSection()
       setHugeImageActionsCount(viewportQPVimage.actions + 1)
@@ -76545,13 +76539,11 @@ DrawPaintBrushLargeStep:
       , "int", colorARGB
       , "int", thisOpacity
       , "int", BrushToolBlendMode - 1
-      , "int", thisWetness
       , "double", cur_offX
       , "double", cur_offY
       , "UPtr", cloneBits
       , "int", clonePitch
-      , "int", thisEraserMode
-      , "int", thisEraseOpacity
+      , "int", BrushToolEraserRestore
       , "int", useSelArea
       , "int", userimgGammaCorrect
       , "int", BlendModesFlipped

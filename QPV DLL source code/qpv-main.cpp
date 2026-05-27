@@ -8137,14 +8137,12 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     double aspectRatio,      // BrushToolAspectRatio (-100 to 100)
     int brushColor,          // ARGB color
     int opacity,             // Stroke opacity (0-255)
-    int blendMode,           // BlendMode index
-    int wetness,             // BrushToolWetness
+    int blendMode,           // BlendMode index (0-25)
     double offX,             // Smudge/Cloner offset X
     double offY,             // Smudge/Cloner offset Y
     unsigned char* cloneData, // Backup pixel buffer (null if memory limits reached)
     int clonePitch,          // Backup buffer pitch
     int eraserMode,          // Eraser mode (1=std, 2=replace/overdraw, 3=restore)
-    int eraseOpacity,        // Erase opacity
     int useSelArea,          // Selection clip active flag (0/1)
     int linearGamma,         // Gamma correct flag
     int flipLayers,          // Flip blend layers flag
@@ -8238,7 +8236,6 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
         }
 
         saturateFactor = (brushSat < 0) ? (65535.0f - abs(brushSat)) / 131070.0f : 0.5f + brushSat / 131070.0f;
-
         if (effectBlur > 2) {
             int radius = effectBlur;
             roiStartX = clamp(startX - radius, 0, imgW - 1);
@@ -8384,35 +8381,18 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             }
             else if (brushType == 4) {
                 // Eraser brush
-                if (eraserMode == 3 && cloneData) {
+                if (bytesPerPixel == 3) {
                     // Restore mode: restore color and alpha from cloneData
-                    int s_iy = imgH - 1 - py;
-                    unsigned char* srcPixel = cloneData + (INT64)s_iy * clonePitch + px * bytesPerPixel;
-                    int srcB = srcPixel[0];
-                    int srcG = srcPixel[1];
-                    int srcR = srcPixel[2];
-                    int srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
-
-                    outR = weighTwoValues(srcR, tgtR, weight);
-                    outG = weighTwoValues(srcG, tgtG, weight);
-                    outB = weighTwoValues(srcB, tgtB, weight);
-                    if (bytesPerPixel == 4) {
-                        outA = weighTwoValues(srcA, tgtA, weight);
-                    }
+                    outR = weighTwoValues(0, tgtR, weight);
+                    outG = weighTwoValues(0, tgtG, weight);
+                    outB = weighTwoValues(0, tgtB, weight);
                 }
                 else if (bytesPerPixel == 4) {
-                    int alpha2 = tgtA;
-                    if (eraserMode == 2) {
-                        // Replace/overdraw alpha
-                        alpha2 = eraseOpacity;
-                    }
-                    else {
-                        // Standard erase: reduce alpha
-                        alpha2 = max(0, tgtA - eraseOpacity);
-                    }
-                    outA = (int)ceil(alpha2 * weight + tgtA * (1.0f - weight));
-                    if (outA < 0) outA = 0;
-                    if (outA > 255) outA = 255;
+                    if (eraserMode == 1)
+                       outA = opacity;  // Replace/overdraw alpha
+                    else
+                       outA = max(0, tgtA - opacity);  // Standard erase: reduce alpha
+                    outA = weighTwoValues(outA, tgtA, weight);
                 }
             }
             else if (brushType == 5) {
