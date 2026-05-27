@@ -5661,8 +5661,8 @@ setNewBrushSymmetryPoints() {
       MouseCoords2Image(mX, mY, 1, prevDestPosX, prevDestPosY, prevResizedVPimgW, prevResizedVPimgH, kX, kY)
       ; tinyPrevAreaCoordX := kX, tinyPrevAreaCoordY := kY
       showTOOLtip("Symmetry point coordinates set to`n" kX " / " kY)
-      BrushToolSymmetryPointX := Round(kX/imgW, 5)
-      BrushToolSymmetryPointY := Round(kY/imgH, 5)
+      BrushToolSymmetryPointX := Round(kX/imgW, 8)
+      BrushToolSymmetryPointY := Round(kY/imgH, 8)
       If (A_TickCount - thisZeit>90)
       {
          dummyRefreshImgSelectionWindow()
@@ -78378,6 +78378,7 @@ additionalHUDelements(mode, mainWidth, mainHeight, newW:=0, newH:=0, DestPosX:=0
     If (AnyWindowOpen=64 && BrushToolType=3) || (AnyWindowOpen=23 && FillAreaColorMode=6) 
     || isVarEqualTo(AnyWindowOpen, 69, 44, 43, 26, 78, 81)
     {
+       ; highlight brush cloner source point
        ImageCoords2Window(tinyPrevAreaCoordX, tinyPrevAreaCoordY, prevDestPosX, prevDestPosY, SelDotsSize, outX, outY)
        Gdip_FillRectangle(2NDglPG, pBrushE, outX, outY, SelDotsSize, SelDotsSize)
        Gdip_DrawRectangle(2NDglPG, pPen1d, outX, outY, SelDotsSize, SelDotsSize)
@@ -78406,6 +78407,7 @@ additionalHUDelements(mode, mainWidth, mainHeight, newW:=0, newH:=0, DestPosX:=0
        hasDrawnImageMap := 0
     }
 
+    ; highlight image editing each symmetry axis
     thisThick := imgHUDbaseUnit/11
     Gdip_SetPenWidth(pPen4, thisThick)
     isSymmetryAllowed := (AnyWindowOpen=64 && BrushToolType<4 && liveDrawingBrushTool=1) || (drawingShapeNow=1 && !AnyWindowOpen) ? 1 : 0
