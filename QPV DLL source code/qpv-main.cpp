@@ -8178,6 +8178,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int brushG = (brushColor >> 8) & 0xFF;
     int brushB = brushColor & 0xFF;
 
+    if (brushType == 6 && softness < 40) {
+        softness = 40;
+    }
+
     // Softness calculations
     double falloff = (100.0 - softness) / 100.0;
 
@@ -8441,18 +8445,42 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 srcA = int_to_char[pixel.a];
             }
             else if (brushType == 6) {
-                // Smudge brush: grab pixels from previous offset position
-                int srcX = clamp((int)round(px - offX), 0, imgW - 1);
-                int srcY = clamp((int)round(py - offY), 0, imgH - 1);
+                // Smudge brush: grab pixels from previous offset position with bilinear interpolation
+                double srcXf = (double)px - offX;
+                double srcYf = (double)py - offY;
+
+                int x1 = clamp((int)floor(srcXf), 0, imgW - 1);
+                int y1 = clamp((int)floor(srcYf), 0, imgH - 1);
+                int x2 = clamp(x1 + 1, 0, imgW - 1);
+                int y2 = clamp(y1 + 1, 0, imgH - 1);
+
+                double fx = srcXf - floor(srcXf);
+                double fy = srcYf - floor(srcYf);
+
                 unsigned char* srcData = cloneData ? cloneData : imgData;
                 int srcPitch = cloneData ? clonePitch : pitch;
-                int s_iy = imgH - 1 - srcY;
-                unsigned char* srcPixel = srcData + (INT64)s_iy * srcPitch + srcX * bytesPerPixel;
 
-                srcB = srcPixel[0];
-                srcG = srcPixel[1];
-                srcR = srcPixel[2];
-                srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
+                int s_iy1 = imgH - 1 - y1;
+                int s_iy2 = imgH - 1 - y2;
+
+                unsigned char* p11 = srcData + (INT64)s_iy1 * srcPitch + x1 * bytesPerPixel;
+                unsigned char* p21 = srcData + (INT64)s_iy1 * srcPitch + x2 * bytesPerPixel;
+                unsigned char* p12 = srcData + (INT64)s_iy2 * srcPitch + x1 * bytesPerPixel;
+                unsigned char* p22 = srcData + (INT64)s_iy2 * srcPitch + x2 * bytesPerPixel;
+
+                double w11 = (1.0 - fx) * (1.0 - fy);
+                double w21 = fx * (1.0 - fy);
+                double w12 = (1.0 - fx) * fy;
+                double w22 = fx * fy;
+
+                srcB = (int)round(w11 * p11[0] + w21 * p21[0] + w12 * p12[0] + w22 * p22[0]);
+                srcG = (int)round(w11 * p11[1] + w21 * p21[1] + w12 * p12[1] + w22 * p22[1]);
+                srcR = (int)round(w11 * p11[2] + w21 * p21[2] + w12 * p12[2] + w22 * p22[2]);
+                if (bytesPerPixel == 4) {
+                    srcA = (int)round(w11 * p11[3] + w21 * p21[3] + w12 * p12[3] + w22 * p22[3]);
+                } else {
+                    srcA = 255;
+                }
             }
             else if (brushType == 7 || brushType == 8) {
                 // Pinch / Bulge brush: scale coordinate mapping

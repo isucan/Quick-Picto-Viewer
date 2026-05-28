@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -76229,6 +76229,8 @@ ActPaintBrushLargeNow() {
       gR := Randomizer(-gR, gR, 2, 3)
       thisToolSoftness := clampInRange(BrushToolSoftness + gR, 1, 100)
    }
+   If (BrushToolType=6 && thisToolSoftness < 40)
+      thisToolSoftness := 40 + thisToolSoftness//2
 
    thisToolAngle := BrushToolAngle + 180
    If (BrushToolRandomAngle>0)
@@ -76320,6 +76322,9 @@ ActPaintBrushLargeNow() {
       prevMX := prevMY := 0
 
    offX := offY := 0
+   smudgeAccDist := 0
+   pdx := 0
+   pdy := 0
    ShowTheImage("set-prev", imgPath)
    setWhileLoopExec(1)
 
@@ -76418,6 +76423,24 @@ ActPaintBrushLargeNow() {
          otherStepu := min(distX, distY)/steps2cover
          dirX := (kX>=prevMX) ? 1 : -1
          dirY := (kY>=prevMY) ? 1 : -1
+         If (BrushToolType=6)
+         {
+            cdx := kX - prevMX
+            cdy := kY - prevMY
+            currDist := Sqrt(cdx*cdx + cdy*cdy)
+            prevDist := Sqrt(pdx*pdx + pdy*pdy)
+            If (currDist > 0.1 && prevDist > 0.1)
+            {
+               dot := cdx * pdx + cdy * pdy
+               cos_angle := dot / (currDist * prevDist)
+               If (cos_angle < 0.5)
+               {
+                  smudgeAccDist := 0
+               }
+            }
+            pdx := cdx
+            pdy := cdy
+         }
          distStepX := (maxDistuK=1) ? stepu : otherStepu
          distStepY := (maxDistuK=2) ? stepu : otherStepu
          tkX := prevMX
@@ -76477,10 +76500,21 @@ ActPaintBrushLargeNow() {
                smudgeStrength := clampInRange(BrushToolWetness*2 + 1, 1, brushSize)
                cur_offX := dirX * clampInRange(distStepX, 1, smudgeStrength)
                cur_offY := dirY * clampInRange(distStepY, 1, smudgeStrength)
+
+               stepDist := Sqrt(distStepX*distStepX + distStepY*distStepY)
+               smudgeAccDist += stepDist
+
+               maxSmudgeDist := brushSize * (BrushToolWetness * 1.5 + 2.0)
+               fadeFactor := 1.0 - (smudgeAccDist / maxSmudgeDist)
+               If (fadeFactor < 0.01)
+                  fadeFactor := 0.01
+
+               cur_opacity := thisOpacity * (BrushToolWetness / 22.0) * fadeFactor
             } Else
             {
                cur_offX := offX
                cur_offY := offY
+               cur_opacity := thisOpacity
             }
 
             Gosub, DrawPaintBrushLargeStep
@@ -76578,7 +76612,7 @@ DrawPaintBrushLargeStep:
       , "double", thisToolAngle
       , "double", thisToolAspectRatio
       , "int", colorARGB
-      , "int", thisOpacity
+      , "int", cur_opacity
       , "int", BrushToolBlendMode - 1
       , "double", cur_offX
       , "double", cur_offY
