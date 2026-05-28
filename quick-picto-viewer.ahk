@@ -76421,8 +76421,8 @@ ActPaintBrushLargeNow() {
          maxDistuV := (distX>=distY) ? distX : distY
          steps2cover := maxDistuV/stepu
          otherStepu := min(distX, distY)/steps2cover
-         dirX := (kX>=prevMX) ? 1 : -1
-         dirY := (kY>=prevMY) ? 1 : -1
+         dirX := (kX>prevMX) ? 1 : ((kX<prevMX) ? -1 : 0)
+         dirY := (kY>prevMY) ? 1 : ((kY<prevMY) ? -1 : 0)
          If (BrushToolType=6)
          {
             cdx := kX - prevMX

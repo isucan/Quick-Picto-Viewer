@@ -8270,8 +8270,28 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
         }
     }
 
-    for (int px = startX; px <= endX; px++) {
-        for (int py = startY; py <= endY; py++) {
+    int stepX = 1;
+    int stepY = 1;
+    int sX = startX;
+    int eX = endX;
+    int sY = startY;
+    int eY = endY;
+
+    if (brushType == 6) {
+        if (offX < 0.0) {
+            stepX = -1;
+            sX = endX;
+            eX = startX;
+        }
+        if (offY < 0.0) {
+            stepY = -1;
+            sY = endY;
+            eY = startY;
+        }
+    }
+
+    for (int px = sX; stepX > 0 ? px <= eX : px >= eX; px += stepX) {
+        for (int py = sY; stepY > 0 ? py <= eY : py >= eY; py += stepY) {
             // 1. Calculate selection constraints
             if (useSelArea && clipMaskFilter(px, py, NULL, 0) == 1)
                 continue;
@@ -8446,11 +8466,11 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             }
             else if (brushType == 6) {
                 // Smudge brush: grab pixels from previous offset position with bilinear interpolation
-                double srcXf = (double)px - offX;
-                double srcYf = (double)py - offY;
+                double srcXf = clamp((double)px - offX, 0.0, (double)(imgW - 1));
+                double srcYf = clamp((double)py - offY, 0.0, (double)(imgH - 1));
 
-                int x1 = clamp((int)floor(srcXf), 0, imgW - 1);
-                int y1 = clamp((int)floor(srcYf), 0, imgH - 1);
+                int x1 = (int)floor(srcXf);
+                int y1 = (int)floor(srcYf);
                 int x2 = clamp(x1 + 1, 0, imgW - 1);
                 int y2 = clamp(y1 + 1, 0, imgH - 1);
 
