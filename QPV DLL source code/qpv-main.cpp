@@ -8142,7 +8142,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     double offY,             // Smudge/Cloner offset Y
     unsigned char* cloneData, // Backup pixel buffer (null if memory limits reached)
     int clonePitch,          // Backup buffer pitch
-    int eraserMode,          // Eraser mode (1=std, 2=replace/overdraw, 3=restore)
+    int eraserMode,          // Eraser mode (0=std, 1=replace)
     int useSelArea,          // Selection clip active flag (0/1)
     int linearGamma,         // Gamma correct flag
     int flipLayers,          // Flip blend layers flag
@@ -8338,6 +8338,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int outG = tgtG;
             int outR = tgtR;
             int outA = tgtA;
+            int srcB = tgtB;
+            int srcG = tgtG;
+            int srcR = tgtR;
+            int srcA = tgtA;
 
             float weight = (mask_val / 255.0f) * (opacity / 255.0f);
             int weightInt = clamp(weight * 255.0f, 0.0f, 255.0f);
@@ -8346,13 +8350,12 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 // Blend brushColor with target pixel
                 RGBAColor Orgb = { brushB, brushG, brushR, brushA };
                 RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
-                RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, 255 - weightInt);
-                outR = blended.r;
-                outG = blended.g;
-                outB = blended.b;
-                if (bytesPerPixel == 4) {
-                    outA = blended.a;
-                }
+                int opa = clamp(255 - weightInt + opacity/5, 0, 255);
+                RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, opa);
+                srcR = blended.r;
+                srcG = blended.g;
+                srcB = blended.b;
+                srcA = blended.a;
             }
             else if (brushType == 3) {
                 // Cloner brush: sample from cloneData at (px - offX, py - offY)
@@ -8365,36 +8368,35 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 int s_iy = imgH - 1 - srcY;
                 unsigned char* srcPixel = srcData + (INT64)s_iy * srcPitch + srcX * bytesPerPixel;
 
-                int srcB = srcPixel[0];
-                int srcG = srcPixel[1];
-                int srcR = srcPixel[2];
-                int srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
+                srcB = srcPixel[0];
+                srcG = srcPixel[1];
+                srcR = srcPixel[2];
+                srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
 
                 RGBAColor Orgb = { srcB, srcG, srcR, srcA };
                 RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
-                RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, 255 - weightInt);
+                int opa = clamp(255 - weightInt - opacity/5, 0, 255);
+                RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, opa);
 
-                outR = blended.r;
-                outG = blended.g;
-                outB = blended.b;
-                if (bytesPerPixel == 4) {
-                    outA = blended.a;
-                }
+                srcR = blended.r;
+                srcG = blended.g;
+                srcB = blended.b;
+                srcA = blended.a;
             }
             else if (brushType == 4) {
                 // Eraser brush
                 if (bytesPerPixel == 3) {
                     // Restore mode: restore color and alpha from cloneData
-                    outR = weighTwoValues(0, tgtR, weight);
-                    outG = weighTwoValues(0, tgtG, weight);
-                    outB = weighTwoValues(0, tgtB, weight);
+                    srcR = 0;
+                    srcG = 0;
+                    srcB = 0;
+                    srcA = 255;
                 }
                 else if (bytesPerPixel == 4) {
                     if (eraserMode == 1)
-                       outA = opacity;  // Replace/overdraw alpha
+                       srcA = opacity;  // Replace/overdraw alpha
                     else
-                       outA = max(0, tgtA - opacity);  // Standard erase: reduce alpha
-                    outA = weighTwoValues(outA, tgtA, weight);
+                       srcA = max(0, tgtA - opacity);  // Standard erase: reduce alpha
                 }
             }
             else if (brushType == 5) {
@@ -8433,19 +8435,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 if (brushSat != 0) {
                     pixel.saturation(brushSat, 1, linearGamma, saturateFactor);
                 }
-                effB = int_to_char[pixel.b];
-                effG = int_to_char[pixel.g];
-                effR = int_to_char[pixel.r];
-                effA = int_to_char[pixel.a];
-                effB = clamp(effB, 0, 255);
-                effG = clamp(effG, 0, 255);
-                effR = clamp(effR, 0, 255);
-                outR = weighTwoValues(effR, tgtR, weight);
-                outG = weighTwoValues(effG, tgtG, weight);
-                outB = weighTwoValues(effB, tgtB, weight);
-                if (bytesPerPixel == 4) {
-                    outA = weighTwoValues(effA, tgtA, weight);
-                }
+                srcB = int_to_char[pixel.b];
+                srcG = int_to_char[pixel.g];
+                srcR = int_to_char[pixel.r];
+                srcA = int_to_char[pixel.a];
             }
             else if (brushType == 6) {
                 // Smudge brush: grab pixels from previous offset position
@@ -8456,17 +8449,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 int s_iy = imgH - 1 - srcY;
                 unsigned char* srcPixel = srcData + (INT64)s_iy * srcPitch + srcX * bytesPerPixel;
 
-                int srcB = srcPixel[0];
-                int srcG = srcPixel[1];
-                int srcR = srcPixel[2];
-                int srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
-
-                outR = weighTwoValues(srcR, tgtR, weight);
-                outG = weighTwoValues(srcG, tgtG, weight);
-                outB = weighTwoValues(srcB, tgtB, weight);
-                if (bytesPerPixel == 4) {
-                    outA = weighTwoValues(srcA, tgtA, weight);
-                }
+                srcB = srcPixel[0];
+                srcG = srcPixel[1];
+                srcR = srcPixel[2];
+                srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
             }
             else if (brushType == 7 || brushType == 8) {
                 // Pinch / Bulge brush: scale coordinate mapping
@@ -8480,19 +8466,18 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 int s_iy = imgH - 1 - isrcY;
                 unsigned char* srcPixel = srcData + (INT64)s_iy * srcPitch + isrcX * bytesPerPixel;
 
-                int srcB = srcPixel[0];
-                int srcG = srcPixel[1];
-                int srcR = srcPixel[2];
-                int srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
-
-                outR = weighTwoValues(srcR, tgtR, weight);
-                outG = weighTwoValues(srcG, tgtG, weight);
-                outB = weighTwoValues(srcB, tgtB, weight);
-                if (bytesPerPixel == 4) {
-                    outA = weighTwoValues(srcA, tgtA, weight);
-                }
+                srcB = srcPixel[0];
+                srcG = srcPixel[1];
+                srcR = srcPixel[2];
+                srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
             }
 
+            outR = weighTwoValues(srcR, tgtR, weight);
+            outG = weighTwoValues(srcG, tgtG, weight);
+            outB = weighTwoValues(srcB, tgtB, weight);
+            if (bytesPerPixel == 4) {
+                outA = weighTwoValues(srcA, tgtA, weight);
+            }
             // Write back to imgData
             targetPixel[0] = clamp(outB, 0, 255);
             targetPixel[1] = clamp(outG, 0, 255);

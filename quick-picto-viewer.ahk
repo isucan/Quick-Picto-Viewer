@@ -1,4 +1,4 @@
-; Script details:
+﻿; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -384,7 +384,7 @@ Global PasteInPlaceGamma := 0, PasteInPlaceSaturation := 0, PasteInPlaceHue := 0
    , userPDFdpi := 430, userActivePDFpage := 0, userThumbsSheetUpscaleSmall := 1, PrintPDFpagesRange := 1
    , PrintPDFpagesGivenEdit :=  "1-5", noQualityWarnings := 0, TLBRinvertColors := 0, userVPpdfDPI := 420
    , userVPsvgScale := 1.00, alphaMaskPreviewOpacity := 255, FloodFillSelectionMode := 1
-
+   , autoApplyVPcolors := 1
 
 EnvGet, realSystemCores, NUMBER_OF_PROCESSORS
 addJournalEntry("Application started: PID " QPVpid ".`nCPU cores identified: " realSystemCores ".")
@@ -2613,7 +2613,8 @@ OpenSLD(fileNamu, dontStartSlide:=0) {
 endCaptureCloneBrush() {
    mustCaptureCloneBrush := 0
    interfaceThread.ahkassign("mustCaptureCloneBrush", mustCaptureCloneBrush)
-   SetTimer, createGUItoolbar, -150
+   interfaceThread.ahkPostFunction("setMenuBarState", "Enable", "PVmenu")
+   createGUItoolbar()
 }
 
 resetMainWin2Welcome() {
@@ -16534,8 +16535,12 @@ coreChangeImgUndoLevel(levelu) {
    calcRelativeSelCoords(pBitmap)
    currIMGdetails.HasAlpha := undoLevelsArray[levelu, 5]
    vpIMGrotation := 0
-   imgFxMode := usrColorDepth := 1
+   usrColorDepth := 1
    defineColorDepth()
+   pp := (AnyWindowOpen=64 && autoApplyVPcolors!=1) ? 1 : 0
+   If !pp
+      imgFxMode := 1
+
    discardViewPortCaches()
    INIaction(1, "usrColorDepth", "General")
    INIaction(1, "vpIMGrotation", "General")
@@ -43497,6 +43502,7 @@ PanelBrushTool(dummy:=0, modus:=0) {
     Gui, Add, Checkbox, y+5 w%sml% hp gupdateUIbrushTool Checked%BrushToolSymmetryX% vBrushToolSymmetryX, X
     Gui, Add, Checkbox, x+5 wp hp gupdateUIbrushTool Checked%BrushToolSymmetryY% vBrushToolSymmetryY, Y
     Gui, Add, Button, x+5 hp gBtnSetBrushSymmetryCoords vBTNuiSetLabelSymmetry, S&et center
+    Gui, Add, Checkbox, xs y+9 gupdateUIbrushTool Checked%autoApplyVPcolors% vautoApplyVPcolors, Auto-apply viewport color effects on image
 
     Gui, Tab, 3 ; randomize
     GuiAddSlider("BrushToolRandomSize", 0,200, 0, "Brush size", "updateUIbrushTool", 1, "xs y+15 w" slideWid " h" hasa)
@@ -44111,7 +44117,7 @@ updateUIbrushTool() {
       uiSlidersArray["BrushToolWetness", 10] := (BrushToolType<=2 || BrushToolType>=6) ? 1 : 0
       uiSlidersArray["BrushToolBlurStrength", 10] := (BrushToolType=3 || BrushToolType=5) ? 1 : 0
 
-      actu := (BrushToolType=2) ? "SettingsGUIA: Enable" : "SettingsGUIA: Disable"
+      actu := (BrushToolType=2 || BrushToolType=3 && viewportQPVimage.imgHandle) ? "SettingsGUIA: Enable" : "SettingsGUIA: Disable"
       GuiControl, % actu, BrushToolBlendMode
       GuiControl, % actu, BlendModesFlipped
 
@@ -44126,6 +44132,9 @@ updateUIbrushTool() {
 
       wetLabel := (BrushToolType>=6) ? "Deform intensity" : "Wetness"
       uiSlidersArray["BrushToolWetness", 5] := wetLabel
+
+      actu := (viewportQPVimage.imgHandle) ? "SettingsGUIA: Disable" : "SettingsGUIA: Enable"
+      GuiControl, % actu, autoApplyVPcolors
 
       actu := (BrushToolType<6) ? "SettingsGUIA: Enable" : "SettingsGUIA: Disable"
       GuiControl, % actu, infoSymmetryLabel
@@ -46689,6 +46698,7 @@ ReadSettingsBrushPanel(act:=0) {
    ; If (ShowAdvToolbar=1)
       delayedWriteTlbrColors(act)
 
+   RegAction(act, "autoApplyVPcolors",, 1)
    RegAction(act, "BrushToolSize",, 2, 2, 950)
    RegAction(act, "BrushToolAutoAngle",, 1)
    RegAction(act, "BrushToolDoubleSize",, 1)
@@ -62345,6 +62355,9 @@ showTOOLtip(msg, funcu:=0, typeFuncu:=0, perc:=0) {
    If (msg="nully" && prevMsg)
       msg := prevMsg
 
+   If (msg="nully")
+      Return
+
    If (funcu!="nully")
       prevMsg := msg
 
@@ -75505,8 +75518,11 @@ ActPaintBrushNow() {
       Return
    }
 
-   If mergeViewPortEffectsImgEditing(A_ThisFunc, 0, 0, 0)
-      Return
+   If (autoApplyVPcolors=1)
+   {
+      If mergeViewPortEffectsImgEditing(A_ThisFunc, 0, 0, 0)
+         Return
+   }
 
    whichBitmap := validBMP(UserMemBMP) ? UserMemBMP : gdiBitmap
    trGdip_GetImageDimensions(whichBitmap, imgW, imgH)
@@ -76314,7 +76330,7 @@ ActPaintBrushLargeNow() {
    thisEffectLight := (BrushToolApplyColorFX=1) ? PasteInPlaceLight : 0
    thisEffectGamma := (BrushToolApplyColorFX=1) ? PasteInPlaceGamma : 0
    thisEffectBlur  := BrushToolBlurStrength
-
+   CreateOSDinfoLine(0, 1)
    While, (determineLClickState()=1 || A_Index<2)
    {
       If (thisOpacity<0.005 || brushSize<1)
