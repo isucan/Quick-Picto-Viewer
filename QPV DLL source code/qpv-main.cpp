@@ -8356,6 +8356,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             }
             else if (brushType == 3) {
                 // Cloner brush: sample from cloneData at (px - offX, py - offY)
+                // offX/offY are calculated relative to user-defined coordinates (tinyPrevAreaCoordX/Y)
+                // and adjusted dynamically in AHK when BrushToolDynamicCloner is active.
                 int srcX = clamp((int)round(px - offX), 0, imgW - 1);
                 int srcY = clamp((int)round(py - offY), 0, imgH - 1);
                 unsigned char* srcData = cloneData ? cloneData : imgData;

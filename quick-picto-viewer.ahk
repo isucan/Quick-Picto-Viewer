@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -76522,6 +76522,18 @@ ActPaintBrushLargeNow() {
    Return
 
 DrawPaintBrushLargeStep:
+   If (BrushToolType = 3)
+   {
+      If (BrushToolDynamicCloner = 1)
+      {
+         cur_offX := cur_tkX - tkX + oMx - tinyPrevAreaCoordX
+         cur_offY := cur_tkY - tkY + oMy - tinyPrevAreaCoordY
+      } Else
+      {
+         cur_offX := cur_tkX - tinyPrevAreaCoordX
+         cur_offY := cur_tkY - tinyPrevAreaCoordY
+      }
+   }
    colorARGB := "0x" Format("{1:x}", 255) startToolColor
    DllCall("qpvmain.dll\PaintBrushLarge"
       , "UPtr", imgBits
