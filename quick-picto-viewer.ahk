@@ -76216,9 +76216,11 @@ ActPaintBrushLargeNow() {
       brushSize := clampInRange(brushSize + gR, brushSize//3 + 2, brushSize + Abs(gR))
    }
 
-   thisBulgePinchFactor := (BrushToolType=6) ? BrushToolWetness*2 + 1 :  BrushToolWetness + 1
+   thisBulgePinchFactor := BrushToolWetness + 1
    If (BrushToolType=7)
       thisBulgePinchFactor := -BrushToolWetness - 1
+   Else If (BrushToolType=6)
+      thisBulgePinchFactor := 0
 
    thisToolSoftness := (BrushToolType>1) ? BrushToolSoftness : 1
    If (BrushToolRandomSoftness>0 && BrushToolType>1)
@@ -76465,11 +76467,22 @@ ActPaintBrushLargeNow() {
             } Else If (BrushToolType<3)
                startToolColor := RandomizeBrushColor(o_startToolColor)
 
-            cur_tkX := tkX
-            cur_tkY := tkY
-            cur_offX := offX
-            cur_offY := offY
-            Gosub, DrawPaintBrushLargeStep
+             cur_tkX := tkX
+             cur_tkY := tkY
+             If (BrushToolType=6)
+             {
+               ; Smudge brush: offset = step displacement in the movement direction,
+               ; scaled by wetness-based smudge strength factor.
+               ; offX>0 means sample from left (when moving right), i.e. behind the brush.
+               smudgeStrength := clampInRange(BrushToolWetness*2 + 1, 1, brushSize)
+               cur_offX := dirX * clampInRange(distStepX, 1, smudgeStrength)
+               cur_offY := dirY * clampInRange(distStepY, 1, smudgeStrength)
+             } Else
+             {
+               cur_offX := offX
+               cur_offY := offY
+             }
+             Gosub, DrawPaintBrushLargeStep
 
             If (BrushToolSymmetryX=1 || BrushToolSymmetryY=1)
             {
@@ -76550,6 +76563,18 @@ DrawPaintBrushLargeStep:
          cur_offY := cur_tkY - tinyPrevAreaCoordY
       }
    }
+   ; Smudge brush: create a snapshot before painting so the DLL
+   ; reads unmodified source pixels for the entire brush stamp
+   hFIFsmudgeClone := 0
+   If (BrushToolType = 6)
+   {
+      hFIFsmudgeClone := FreeImage_Clone(viewportQPVimage.imgHandle)
+      If hFIFsmudgeClone
+      {
+         cloneBits := FreeImage_GetBits(hFIFsmudgeClone)
+         clonePitch := FreeImage_GetStride(hFIFsmudgeClone)
+      }
+   }
    colorARGB := "0x" Format("{1:x}", 255) startToolColor
    DllCall("qpvmain.dll\PaintBrushLarge"
       , "UPtr", imgBits
@@ -76586,6 +76611,13 @@ DrawPaintBrushLargeStep:
       , "int", texH
       , "int", texPitch
       , "int", texBpp)
+   ; Smudge brush: free the snapshot after painting
+   If (hFIFsmudgeClone)
+   {
+      FreeImage_UnLoad(hFIFsmudgeClone)
+      hFIFsmudgeClone := 0
+      cloneBits := clonePitch := 0
+   }
 Return
 }
 
