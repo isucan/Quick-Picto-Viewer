@@ -1,4 +1,4 @@
-﻿Table of contents:
+Table of contents:
    a) How Quick Picto Viewer initializes
    b) How a files list index is created
    c) Files index filtering
@@ -10,9 +10,9 @@
    i) Image live editing
    j) How to enable alpha masking for an image editing live tool
    k) Vector shapes drawing mode
-   l) List view and thumbnails list (soon)
-   m) Image duplicates identification (soon)
-   n) How to add a new panel/tool (soon)
+   l) List view and thumbnails list
+   m) Image duplicates identification
+   n) How to add a new panel/tool
 
 
 Deniere mise à jour: dimanche 24 mars 2024
@@ -961,40 +961,139 @@ k) Vector shapes drawing mode
    to disk a vector shape via saveCurrentVectorShape().
 
 
-l) List view and thumbnails list (soon)
+l) List view and thumbnails list
 =====================================================================
 
-   QPV_ListViewGridHUDoverlay()
-   QPV_listThumbnailsGridMode()
-   QPV_ShowThumbnails()
+   Quick Picto Viewer supports displaying files in a thumbnails grid mode
+   or list view mode. The key functions and file components involved are:
 
-   module-fim-thumbs.ahk 
-     MonoGenerateThumb()
+   QPV_ShowThumbnails(modus:=0, allStarter:=0, allStartZeit:=0)
+      This is the primary coordinator function for loading, generating, and
+      displaying thumbnails. It calculates the visible items on the current
+      page viewport, checks if thumbnails are already cached in memory or disk,
+      and orchestrates their display. If the list-grid view mode is active 
+      (thumbsListViewMode > 1), it delegates the grid rendering process to
+      QPV_listThumbnailsGridMode().
+
+   QPV_listThumbnailsGridMode(forceMode, thisGu, thisHDC, thisHwnd)
+      Renders the thumbnails in the grid/list mode layout directly on the GDI+
+      graphics context (thisGu). It loops through the page files, uses PathCompact()
+      to fit path text, and draws thumbnail borders, seen states, or placeholders.
+
+   QPV_ListViewGridHUDoverlay(mustDestroyBrushes:=0, simpleMode:=0, listMap:=0, actu:="", mapOffset:=0)
+      Draws the interactive HUD overlay layer (2NDglPG) over the thumbnails grid. 
+      It draws the active selection cursor frames, highlight rectangles, grouping lines
+      for duplicates, scrollbar trackers, HUD annotation boxes, and the metadata 
+      information overlays.
+
+   module-fim-thumbs.ahk -> MonoGenerateThumb(imgPath, file2save, params, thisBindex)
+      The core single-thumbnail generation routine. It is designed to run either
+      synchronously or asynchronously/multithreaded in background worker threads
+      (using ahkPostFunction). It attempts to load images using Windows Imaging Component
+      (via LoadWICimage) or FreeImage (via FreeImage_Load), rescales them according to
+      quality and size settings (using trFreeImage_Rescale), saves the thumbnail to disk,
+      and converts it to a GDI+ bitmap.
 
 
-m) Image duplicates identification (soon)
+m) Image duplicates identification
 =====================================================================
 
-   PanelFindDupes()
-   retrieveDupesByProperties()
+   QPV identifies identical or similar images by comparing file properties, aspect
+   ratios, histogram data, or perceptual content hashes (dHash, pHash, lHash). It
+   requires saving the current slides index list as an SQLite database (SLD version 3).
+
+   PanelFindDupes(dummy:=0)
+      Creates and displays the primary GUI dialog panel for managing duplicate detection.
+      It initializes the required external DLLs (qpvmain.dll and FreeImage) and lets
+      users configure detection presets, hashing precision, threshold distances, Mean-Squared
+      Error (MSE) filters, or string criteria across multiple tabs in SettingsGUIA.
+
+   retrieveDupesByProperties(theseCols, SortCriterion:=0, mustForceHashes:=0)
+      The main query manager for duplicates identification. It checks metadata/hashes, 
+      triggers database collections if data is missing, calculates differences, and performs
+      SQL JOIN queries against the SQLite database to retrieve matching duplicate files.
+
    OpenSLDBdataBase()
-   collectImageInfosNow()
-   collectSQLFileInfosNow()
-   generateSQLimageFingerPrintHash()
-   filterDupeResultsByHdist()
-   corefilterDupeResultsByHdist()
-   changeHdistLevelCached()
-   sortDupeGroups()
+      Initializes and establishes connection to the SQLite database slideshow file to
+      enable relational queries and storage of calculated metadata/hashes.
+
+   collectSQLFileInfosNow(scu, modus, asku, doFilterExtra:=1, showInfos:=1, stringu:=0, mustNotHave:=0, strPosu:=0, whatu:=0)
+      Queries the database for files that lack metadata properties (sizes, dimensions, or hashes)
+      and calls collectImageInfosNow() to populate them.
+
+   collectImageInfosNow(queryString:=0, modus:=0, simple:=0)
+      Processes physical image files on disk to gather dimensions, frame/page counts, pixel
+      formats, or histogram peaks and records them back to the database.
+
+   generateSQLimageFingerPrintHash(O_whichHashu, flippedModus, stringu, mustNotHave, strPosu, whatu)
+      Calculates perceptual image hashes (dHash, pHash, lHash) and their horizontally-flipped
+      variants by making DLL calls to qpvmain.dll, writing the resulting hash strings to the database.
+
+   filterDupeResultsByHdist(threshold)
+      Groups the candidate duplicates retrieved from the database and processes the comparisons 
+      using corefilterDupeResultsByHdist().
+
+   corefilterDupeResultsByHdist(dupeIDsArray, threshold, grupu, totalgroups, thisCounter, mainZeit)
+      The core Hamming distance matching loop. It parses binary/hex hashes in memory buffers,
+      calculates differences, and groups duplicates that fall within the threshold.
+
+   changeHdistLevelCached(modus, newLvlA:=0, newLvlB:=0, newLvlMSEa:=0, newLvlMSEb:=0)
+      Enables dynamic, instant filtering of the duplicates list (by updating the similarity 
+      threshold or MSE limits) using in-memory cached files (bckpResultedFilesList) without
+      requiring heavy database queries.
+
+   sortDupeGroups(givenArray, oldMap:=0, remSingles:=1)
+      Cleans up single/lone items from duplicate groups and groups the remaining matching
+      items adjacently under the same dupeID for a contiguous duplicate-by-duplicate view.
+
    PanelAutoSelectDupes()
-   autoSelectDupesInGroups()
+      Launches a GUI dialog window allowing users to automatically mark duplicates for removal
+      based on rules (e.g. smallest file size, smallest resolution, or folder path keyword matches).
+
+   autoSelectDupesInGroups(mode, givenRegEx:=0)
+      Processes each duplicate group, compares megapixels or file sizes, and flags the duplicate
+      files as selected (resultedFilesList[A_Index, 2] := 1) based on the user's criteria.
+
    testIsDupesList()
+      Returns true if the slideshow is in SQLite database format (SLDtypeLoaded = 3), the current
+      files list is filtered by a duplicate query, and the current image has a valid duplicate
+      group ID in resultedFilesList[currentFileIndex, 23].
 
-   resultedFilesList[A_Index, 23] is dupeID.
-   If testIsDupesList() returns true, QPV_ListViewGridHUDoverlay() will display
-   specific information about the focused duplicate item.
+   resultedFilesList[A_Index, 23]
+      Holds the unique duplicate group identifier (dupeID) string. Files sharing the same
+      dupeID are duplicates of each other.
 
 
-
-n) How to add a new panel/tool (soon)
+n) How to add a new panel/tool
 =====================================================================
 
+   To introduce a new custom window/panel or image editing tool to QPV, follow this structure:
+
+   1. Assign a Unique Window ID
+      Define a unique integer identifier (IDwin) for the new panel (e.g., IDwin := 99). This
+      value represents the state of the active panel and is assigned to AnyWindowOpen.
+
+   2. Create the Panel Function
+      Define a function, e.g., PanelMyNewTool(). Inside this function:
+      - Call createSettingsGUI(IDwin, A_ThisFunc) to close active panels, reset states, and 
+        initialize UI font configurations, returning the default button height (thisBtnHeight).
+      - Build the user interface elements inside the AHK GUI name "SettingsGUIA". You can use 
+        helper functions (e.g., GuiAddEdit, GuiAddDropDownList, GuiAddCheckBox, GuiAddButton) or
+        standard "Gui, SettingsGUIA: Add, ..." AHK controls.
+      - Center and display the window using repositionWindowCenter("SettingsGUIA", hSetWinGui,
+        PVhwnd, "Window Title").
+
+   3. Handle Settings Persistence
+      Write corresponding ReadSettingsMyNewToolPanel() and WriteSettingsMyNewToolPanel() functions
+      to load and write panel configurations to the registry or quick-picto-viewer.ini.
+
+   4. Register Panel & Image Editing Logic
+      - Add the panel launcher command to menus/shortcuts using kMenu().
+      - If the panel is a live image editing tool:
+         - Ensure it is registered in createSettingsGUI()'s live editor checks.
+         - Implement live update callback functions (e.g., updateUIMyNewTool()) to respond to
+           user adjustments.
+         - Create a preview function (e.g., livePreviewMyNewTool()) to refresh the canvas
+           viewport using UserMemBMP and gdiBitmap (or viewportQPVimage for huge images).
+         - If alpha masking is supported, add the IDwin to isAlphaMaskWindow() and integrate
+           uiADDalphaMaskTabs().
