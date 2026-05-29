@@ -70,13 +70,12 @@ inline bool inRange(const int &low, const int &high, const int &x) {
 }
 
 int inline weighTwoValues(const float A, const float B, const float w) {
-    if (w>=1)
-       return A;
-    else if (w<=0)
-       return B;
+    if (w>=1.0f)
+       return (int)round(A);
+    else if (w<=0.0f)
+       return (int)round(B);
     else
-       return w * (A - B) + B;
-       // return (A*w + B*(1.0f - w));
+       return (int)round(w * (A - B) + B);
 }
 
 float inline weighTwoValues(const float A, const float B, const float w, const int r) {
@@ -8172,6 +8171,21 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int startY = clamp((int)(tkY - halfH), 0, imgH - 1);
     int endY = clamp((int)(tkY + halfH), 0, imgH - 1);
 
+    int roiW = endX - startX + 1;
+    int roiH = endY - startY + 1;
+    std::vector<unsigned char> localClone;
+    int localPitch = roiW * bytesPerPixel;
+    if (!cloneData && (brushType == 7 || brushType == 8) && roiW > 0 && roiH > 0) {
+        localClone.resize((size_t)roiW * roiH * bytesPerPixel);
+        for (int ry = 0; ry < roiH; ++ry) {
+            int img_py = startY + ry;
+            int img_iy = imgH - 1 - img_py;
+            unsigned char* srcRow = imgData + (INT64)img_iy * pitch + startX * bytesPerPixel;
+            unsigned char* dstRow = localClone.data() + (INT64)ry * localPitch;
+            memcpy(dstRow, srcRow, localPitch);
+        }
+    }
+
     // Parse foreground color channels
     int brushA = (brushColor >> 24) & 0xFF;
     int brushR = (brushColor >> 16) & 0xFF;
@@ -8513,21 +8527,56 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 srcA = blended.a;
             }
             else if (brushType == 7 || brushType == 8) {
-                // Pinch / Bulge brush: scale coordinate mapping
-                double srcX = tkX + src_dx;
-                double srcY = tkY + src_dy;
-                int isrcX = clamp((int)round(srcX), 0, imgW - 1);
-                int isrcY = clamp((int)round(srcY), 0, imgH - 1);
+                // Pinch / Bulge brush: scale coordinate mapping with bilinear interpolation
+                double srcXf = clamp(tkX + src_dx, 0.0, (double)(imgW - 1));
+                double srcYf = clamp(tkY + src_dy, 0.0, (double)(imgH - 1));
 
-                unsigned char* srcData = cloneData ? cloneData : imgData;
-                int srcPitch = cloneData ? clonePitch : pitch;
-                int s_iy = imgH - 1 - isrcY;
-                unsigned char* srcPixel = srcData + (INT64)s_iy * srcPitch + isrcX * bytesPerPixel;
+                int x1 = (int)floor(srcXf);
+                int y1 = (int)floor(srcYf);
+                int x2 = clamp(x1 + 1, 0, imgW - 1);
+                int y2 = clamp(y1 + 1, 0, imgH - 1);
 
-                srcB = srcPixel[0];
-                srcG = srcPixel[1];
-                srcR = srcPixel[2];
-                srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
+                double fx = srcXf - floor(srcXf);
+                double fy = srcYf - floor(srcYf);
+
+                double w11 = (1.0 - fx) * (1.0 - fy);
+                double w21 = fx * (1.0 - fy);
+                double w12 = (1.0 - fx) * fy;
+                double w22 = fx * fy;
+
+                unsigned char *p11, *p21, *p12, *p22;
+
+                if (!localClone.empty()) {
+                    int lx1 = clamp(x1 - startX, 0, roiW - 1);
+                    int ly1 = clamp(y1 - startY, 0, roiH - 1);
+                    int lx2 = clamp(x2 - startX, 0, roiW - 1);
+                    int ly2 = clamp(y2 - startY, 0, roiH - 1);
+
+                    p11 = localClone.data() + (INT64)ly1 * localPitch + lx1 * bytesPerPixel;
+                    p21 = localClone.data() + (INT64)ly1 * localPitch + lx2 * bytesPerPixel;
+                    p12 = localClone.data() + (INT64)ly2 * localPitch + lx1 * bytesPerPixel;
+                    p22 = localClone.data() + (INT64)ly2 * localPitch + lx2 * bytesPerPixel;
+                } else {
+                    unsigned char* srcData = cloneData ? cloneData : imgData;
+                    int srcPitch = cloneData ? clonePitch : pitch;
+
+                    int s_iy1 = imgH - 1 - y1;
+                    int s_iy2 = imgH - 1 - y2;
+
+                    p11 = srcData + (INT64)s_iy1 * srcPitch + x1 * bytesPerPixel;
+                    p21 = srcData + (INT64)s_iy1 * srcPitch + x2 * bytesPerPixel;
+                    p12 = srcData + (INT64)s_iy2 * srcPitch + x1 * bytesPerPixel;
+                    p22 = srcData + (INT64)s_iy2 * srcPitch + x2 * bytesPerPixel;
+                }
+
+                srcB = (int)round(w11 * p11[0] + w21 * p21[0] + w12 * p12[0] + w22 * p22[0]);
+                srcG = (int)round(w11 * p11[1] + w21 * p21[1] + w12 * p12[1] + w22 * p22[1]);
+                srcR = (int)round(w11 * p11[2] + w21 * p21[2] + w12 * p12[2] + w22 * p22[2]);
+                if (bytesPerPixel == 4) {
+                    srcA = (int)round(w11 * p11[3] + w21 * p21[3] + w12 * p12[3] + w22 * p22[3]);
+                } else {
+                    srcA = 255;
+                }
             }
 
             outR = weighTwoValues(srcR, tgtR, weight);
