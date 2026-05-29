@@ -1,4 +1,4 @@
-; Script details:
+﻿; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -44117,7 +44117,7 @@ updateUIbrushTool() {
       uiSlidersArray["BrushToolWetness", 10] := (BrushToolType<=2 || BrushToolType>=6) ? 1 : 0
       uiSlidersArray["BrushToolBlurStrength", 10] := (BrushToolType=3 || BrushToolType=5) ? 1 : 0
 
-      actu := (BrushToolType=2 || BrushToolType=3 && viewportQPVimage.imgHandle) ? "SettingsGUIA: Enable" : "SettingsGUIA: Disable"
+      actu := (BrushToolType=2 || (BrushToolType=3 || BrushToolType=6) && viewportQPVimage.imgHandle) ? "SettingsGUIA: Enable" : "SettingsGUIA: Disable"
       GuiControl, % actu, BrushToolBlendMode
       GuiControl, % actu, BlendModesFlipped
 
@@ -76192,12 +76192,12 @@ ActPaintBrushLargeNow() {
    thisMainOpacity := (thisUseSecondaryColor=1) ? BrushToolBopacity : BrushToolAopacity
 
    MouseCoords2Image(mX, mY, 0, prevDestPosX, prevDestPosY, prevResizedVPimgW, prevResizedVPimgH, kX, kY, 0, 1, imgW, imgH)
-   If (BrushToolWetness=21)
+   If (BrushToolWetness=21 && BrushToolType<3)
    {
       coloruA := "0xFF" FreeImage_GetPixelColorDirect(viewportQPVimage.imgHandle, kX, kY)
       startToolColor := SubStr(MixARGB(coloruA, "0xFF" startToolColor, 0.5), 5)
       thisWetness := 20
-   } Else If (BrushToolWetness=22)
+   } Else If (BrushToolWetness=22 && BrushToolType<3)
    {
       coloruA := "0xFF" FreeImage_GetPixelColorDirect(viewportQPVimage.imgHandle, kX, kY)
       startToolColor := SubStr(MixARGB(coloruA, "0xFF" startToolColor, 0.2), 5)
@@ -76273,17 +76273,15 @@ ActPaintBrushLargeNow() {
       hFIFtex := FreeImage_Load(texPath)
       If hFIFtex
       {
-         thisAR := 1 - Abs(BrushToolAspectRatio)/105
-         brImgSelW := (BrushToolAspectRatio>0) ? brushSize * thisAR : brushSize
-         brImgSelH := (BrushToolAspectRatio<0) ? brushSize * thisAR : brushSize
+         brImgSelW := brImgSelH := brushSize
          If (brImgSelW < 1)
             brImgSelW := 1
          If (brImgSelH < 1)
             brImgSelH := 1
+
          hFIFtexRescaled := trFreeImage_Rescale(hFIFtex, brImgSelW, brImgSelH, 3)
          FreeImage_UnLoad(hFIFtex)
          hFIFtex := hFIFtexRescaled
-         
          If (thisToolAngle != 0 && thisToolAngle != 360)
          {
             hFIFtexRotated := FreeImage_Rotate(hFIFtex, thisToolAngle)
@@ -76323,8 +76321,7 @@ ActPaintBrushLargeNow() {
 
    offX := offY := 0
    smudgeAccDist := 0
-   pdx := 0
-   pdy := 0
+   pdx := pdy := 0
    ShowTheImage("set-prev", imgPath)
    setWhileLoopExec(1)
 
@@ -76338,6 +76335,7 @@ ActPaintBrushLargeNow() {
    thisEffectGamma := (BrushToolApplyColorFX=1) ? PasteInPlaceGamma : 0
    thisEffectBlur  := BrushToolBlurStrength
    CreateOSDinfoLine(0, 1)
+   plza := A_TickCount
    While, (determineLClickState()=1 || A_Index<2)
    {
       If (thisOpacity<0.005 || brushSize<1)
@@ -76423,7 +76421,7 @@ ActPaintBrushLargeNow() {
          otherStepu := min(distX, distY)/steps2cover
          dirX := (kX>prevMX) ? 1 : ((kX<prevMX) ? -1 : 0)
          dirY := (kY>prevMY) ? 1 : ((kY<prevMY) ? -1 : 0)
-         If (BrushToolType=6)
+         If (BrushToolType=6) ; smudge brush tool
          {
             cdx := kX - prevMX
             cdy := kY - prevMY
@@ -76434,9 +76432,7 @@ ActPaintBrushLargeNow() {
                dot := cdx * pdx + cdy * pdy
                cos_angle := dot / (currDist * prevDist)
                If (cos_angle < 0.5)
-               {
                   smudgeAccDist := 0
-               }
             }
             pdx := cdx
             pdy := cdy
@@ -76448,7 +76444,6 @@ ActPaintBrushLargeNow() {
          thisIndex++
          avgDistX := (distX + distStepX)//2
          avgDistY := (distY + distStepY)//2
-
          Loop
          {
             Xgood := Ygood := 0
@@ -76497,19 +76492,24 @@ ActPaintBrushLargeNow() {
                ; Smudge brush: offset = step displacement in the movement direction,
                ; scaled by wetness-based smudge strength factor.
                ; offX>0 means sample from left (when moving right), i.e. behind the brush.
-               smudgeStrength := clampInRange(BrushToolWetness*2 + 1, 1, brushSize)
+               smudgeStrength := clampInRange(BrushToolWetness*4 + 1, 5, brushSize)
                cur_offX := dirX * clampInRange(distStepX, 1, smudgeStrength)
                cur_offY := dirY * clampInRange(distStepY, 1, smudgeStrength)
 
                stepDist := Sqrt(distStepX*distStepX + distStepY*distStepY)
                smudgeAccDist += stepDist
-
-               maxSmudgeDist := brushSize * (BrushToolWetness * 1.5 + 2.0)
+               maxSmudgeDist := brushSize * (BrushToolWetness/22 * 2 + 2)
                fadeFactor := 1.0 - (smudgeAccDist / maxSmudgeDist)
                If (fadeFactor < 0.01)
                   fadeFactor := 0.01
 
-               cur_opacity := thisOpacity * (BrushToolWetness / 22.0) * fadeFactor
+               cur_opacity := Floor(thisOpacity * (BrushToolWetness/22) * fadeFactor)
+               If (BrushToolTexture=1 && thisIndex>1 && (A_TickCount - plza>450))
+               {
+                  plza := A_TickCount
+                  brushSize -= Ceil(BrushToolSize*0.05) + 1
+               }
+               ;ToolTip, % cur_opacity "|" brushSize "|" BrushToolTexture "|" BrushToolSize "|" thisIndex , , , 2
             } Else
             {
                cur_offX := offX

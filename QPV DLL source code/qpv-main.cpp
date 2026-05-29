@@ -8501,6 +8501,16 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 } else {
                     srcA = 255;
                 }
+
+                RGBAColor Orgb = { srcB, srcG, srcR, srcA };
+                RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
+                int opa = clamp(255 - weightInt - opacity/5, 0, 255);
+                RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, opa);
+
+                srcR = blended.r;
+                srcG = blended.g;
+                srcB = blended.b;
+                srcA = blended.a;
             }
             else if (brushType == 7 || brushType == 8) {
                 // Pinch / Bulge brush: scale coordinate mapping
