@@ -8155,8 +8155,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int texW,                // Texture width
     int texH,                // Texture height
     int texPitch,            // Texture stride
-    int texBpp,              // Texture bits-per-pixel
-    unsigned char* strokeMask // Grayscale opacity buffer for current stroke (null if overdraw enabled)
+    int texBpp               // Texture bits-per-pixel
 ) {
     if (!imgData || imgW <= 0 || imgH <= 0 || pitch <= 0 || brushSize <= 0)
         return 0;
@@ -8366,14 +8365,6 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             if (mask_val == 0)
                 continue;
 
-            if (strokeMask) {
-                INT64 maskIdx = (INT64)py * imgW + px;
-                if (mask_val > strokeMask[maskIdx]) {
-                    strokeMask[maskIdx] = mask_val;
-                }
-                mask_val = strokeMask[maskIdx];
-            }
-
             // Target pixel pointer in imgData (bottom-up scanline)
             int iy = imgH - 1 - py;
             unsigned char* targetPixel = imgData + (INT64)iy * pitch + px * bytesPerPixel;
@@ -8394,8 +8385,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int srcG = tgtG;
             int srcR = tgtR;
             int srcA = tgtA;
-            float weight = (mask_val / 255.0f) * (opacity / 255.0f);
-            int weightInt = clamp(weight * 255.0f, 0.0f, 255.0f);
+            float new_weight = (mask_val / 255.0f) * (opacity / 255.0f);
+            float weight = new_weight;
             if (brushType == 1 || brushType == 2) {
                 // Paint brush: Solid/Soft Color
                 srcR = brushR;
@@ -8565,6 +8556,19 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                     srcA = 255;
                 }
             }
+
+            if (cloneData && brushType <= 3) {
+                int diff_curr = abs(targetPixel[0] - tgtB) + abs(targetPixel[1] - tgtG) + abs(targetPixel[2] - tgtR);
+                int diff_brush = abs(srcB - tgtB) + abs(srcG - tgtG) + abs(srcR - tgtR);
+                if (diff_brush > 0) {
+                    float old_weight = (float)diff_curr / diff_brush;
+                    if (old_weight > 1.0f) old_weight = 1.0f;
+                    if (old_weight > new_weight) {
+                        weight = old_weight;
+                    }
+                }
+            }
+            int weightInt = clamp(weight * 255.0f, 0.0f, 255.0f);
 
             if (brushType==2 || brushType==3 || brushType>=5)
             {
