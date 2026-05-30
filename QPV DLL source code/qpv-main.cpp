@@ -8369,11 +8369,12 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int iy = imgH - 1 - py;
             unsigned char* targetPixel = imgData + (INT64)iy * pitch + px * bytesPerPixel;
 
-            // Read target color (BGRA or BGR)
-            int tgtB = targetPixel[0];
-            int tgtG = targetPixel[1];
-            int tgtR = targetPixel[2];
-            int tgtA = (bytesPerPixel == 4) ? targetPixel[3] : 255;
+            // Read target color (BGRA or BGR) from cloneData if available, otherwise from imgData
+            unsigned char* tgtSourcePixel = cloneData ? (cloneData + (INT64)iy * clonePitch + px * bytesPerPixel) : targetPixel;
+            int tgtB = tgtSourcePixel[0];
+            int tgtG = tgtSourcePixel[1];
+            int tgtR = tgtSourcePixel[2];
+            int tgtA = (bytesPerPixel == 4) ? tgtSourcePixel[3] : 255;
 
             // Prepare output color
             int outB = tgtB;

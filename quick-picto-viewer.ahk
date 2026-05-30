@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -76251,6 +76251,15 @@ ActPaintBrushLargeNow() {
    thisOpacity := (thisUseSecondaryColor=1) ? BrushToolBopacity : BrushToolAopacity
    hFIFimgA := useSelArea := 0
    cloneBits := clonePitch := 0
+   If (BrushToolOverDraw = 0)
+   {
+      hFIFimgA := FreeImage_Clone(viewportQPVimage.imgHandle)
+      If hFIFimgA
+      {
+         cloneBits := FreeImage_GetBits(hFIFimgA)
+         clonePitch := FreeImage_GetStride(hFIFimgA)
+      }
+   }
    defineRelativeSelCoords(imgW, imgH)
    objuSel := InitHugeImgSelPath(0, imgW, imgH)
    zrr := recordUndoLevelHugeImagesNow(objuSel.bX1, objuSel.bY1, objuSel.bImgSelW, objuSel.bImgSelH)
@@ -76579,6 +76588,8 @@ ActPaintBrushLargeNow() {
    lastInvoked := A_TickCount
    If hFIFtex
       FreeImage_UnLoad(hFIFtex)
+   If hFIFimgA
+      FreeImage_UnLoad(hFIFimgA)
    Return
 
 DrawPaintBrushLargeStep:
