@@ -8176,6 +8176,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     std::vector<unsigned char> localClone;
     int localPitch = roiW * bytesPerPixel;
     if (!cloneData && (brushType == 7 || brushType == 8) && roiW > 0 && roiH > 0) {
+        // pinch bulge brushes
         localClone.resize((size_t)roiW * roiH * bytesPerPixel);
         for (int ry = 0; ry < roiH; ++ry) {
             int img_py = startY + ry;
@@ -8307,8 +8308,11 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     for (int px = sX; stepX > 0 ? px <= eX : px >= eX; px += stepX) {
         for (int py = sY; stepY > 0 ? py <= eY : py >= eY; py += stepY) {
             // 1. Calculate selection constraints
-            if (useSelArea && clipMaskFilter(px, py, NULL, 0) == 1)
-                continue;
+            if (useSelArea)
+            {
+                if (clipMaskFilter(px, py, NULL, 0) == 1)
+                   continue;
+            }
 
             // 2. Compute rotated coordinates and elliptical mask
             double dx = px - tkX;
@@ -8380,23 +8384,17 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int srcG = tgtG;
             int srcR = tgtR;
             int srcA = tgtA;
-
             float weight = (mask_val / 255.0f) * (opacity / 255.0f);
             int weightInt = clamp(weight * 255.0f, 0.0f, 255.0f);
             if (brushType == 1 || brushType == 2) {
                 // Paint brush: Solid/Soft Color
-                // Blend brushColor with target pixel
-                RGBAColor Orgb = { brushB, brushG, brushR, brushA };
-                RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
-                int opa = clamp(255 - weightInt + opacity/5, 0, 255);
-                RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, opa);
-                srcR = blended.r;
-                srcG = blended.g;
-                srcB = blended.b;
-                srcA = blended.a;
+                srcR = brushR;
+                srcG = brushG;
+                srcB = brushB;
+                srcA = brushA;
             }
             else if (brushType == 3) {
-                // Cloner brush: sample from cloneData at (px - offX, py - offY)
+                // Cloner brush: sample from srcData
                 // offX/offY are calculated relative to user-defined coordinates (tinyPrevAreaCoordX/Y)
                 // and adjusted dynamically in AHK when BrushToolDynamicCloner is active.
                 int srcX = clamp((int)round(px - offX), 0, imgW - 1);
@@ -8410,16 +8408,6 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 srcG = srcPixel[1];
                 srcR = srcPixel[2];
                 srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
-
-                RGBAColor Orgb = { srcB, srcG, srcR, srcA };
-                RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
-                int opa = clamp(255 - weightInt - opacity/5, 0, 255);
-                RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, opa);
-
-                srcR = blended.r;
-                srcG = blended.g;
-                srcB = blended.b;
-                srcA = blended.a;
             }
             else if (brushType == 4) {
                 // Eraser brush
@@ -8515,16 +8503,6 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 } else {
                     srcA = 255;
                 }
-
-                RGBAColor Orgb = { srcB, srcG, srcR, srcA };
-                RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
-                int opa = clamp(255 - weightInt - opacity/5, 0, 255);
-                RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, opa);
-
-                srcR = blended.r;
-                srcG = blended.g;
-                srcB = blended.b;
-                srcA = blended.a;
             }
             else if (brushType == 7 || brushType == 8) {
                 // Pinch / Bulge brush: scale coordinate mapping with bilinear interpolation
@@ -8545,7 +8523,6 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 double w22 = fx * fy;
 
                 unsigned char *p11, *p21, *p12, *p22;
-
                 if (!localClone.empty()) {
                     int lx1 = clamp(x1 - startX, 0, roiW - 1);
                     int ly1 = clamp(y1 - startY, 0, roiH - 1);
@@ -8577,6 +8554,19 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 } else {
                     srcA = 255;
                 }
+            }
+
+            if (brushType==2 || brushType==3 || brushType>=5)
+            {
+                RGBAColor Orgb = { srcB, srcG, srcR, srcA };
+                RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
+                int opa = clamp(255 - weightInt - opacity/5, 0, 255);
+                RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, opa);
+
+                srcR = blended.r;
+                srcG = blended.g;
+                srcB = blended.b;
+                srcA = blended.a;
             }
 
             outR = weighTwoValues(srcR, tgtR, weight);

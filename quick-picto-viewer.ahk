@@ -44087,7 +44087,7 @@ updateUIbrushTool() {
       uiSlidersArray["BrushToolSoftness", 10] := (BrushToolTexture>1 || BrushToolType=1) ? 0 : 1
       uiSlidersArray["BrushToolAspectRatio", 10] := (BrushToolTexture>1 && BrushToolType>1) ? 0 : 1
 
-      actu := (BrushToolType=1) ? "SettingsGUIA: Disable" : "SettingsGUIA: Enable"
+      actu := !isInRange(BrushToolType, 2, 6) ? "SettingsGUIA: Disable" : "SettingsGUIA: Enable"
       GuiControl, % actu, BrushToolTexture
 
       actu := (BrushToolType=3) ? "SettingsGUIA: Show" : "SettingsGUIA: Hide"
@@ -44117,7 +44117,7 @@ updateUIbrushTool() {
       uiSlidersArray["BrushToolWetness", 10] := (BrushToolType<=2 || BrushToolType>=6) ? 1 : 0
       uiSlidersArray["BrushToolBlurStrength", 10] := (BrushToolType=3 || BrushToolType=5) ? 1 : 0
 
-      actu := (BrushToolType=2 || (BrushToolType=3 || BrushToolType=6) && viewportQPVimage.imgHandle) ? "SettingsGUIA: Enable" : "SettingsGUIA: Disable"
+      actu := (BrushToolType=2 || (BrushToolType=3 || BrushToolType>=5) && viewportQPVimage.imgHandle) ? "SettingsGUIA: Enable" : "SettingsGUIA: Disable"
       GuiControl, % actu, BrushToolBlendMode
       GuiControl, % actu, BlendModesFlipped
 
@@ -76190,7 +76190,6 @@ ActPaintBrushLargeNow() {
    o_startToolColor := startToolColor := (thisUseSecondaryColor=1) ? BrushToolBcolor : BrushToolAcolor
    ; o_startToolColor := startToolColor := RandomizeBrushColor(startToolColor)
    thisMainOpacity := (thisUseSecondaryColor=1) ? BrushToolBopacity : BrushToolAopacity
-
    MouseCoords2Image(mX, mY, 0, prevDestPosX, prevDestPosY, prevResizedVPimgW, prevResizedVPimgH, kX, kY, 0, 1, imgW, imgH)
    If (BrushToolWetness=21 && BrushToolType<3)
    {
@@ -76250,12 +76249,11 @@ ActPaintBrushLargeNow() {
 
    advancedSoftBrush := (BrushToolType=2 && (BrushToolOverDraw=0 || BrushToolBlendMode>1)) ? 1 : 0
    thisOpacity := (thisUseSecondaryColor=1) ? BrushToolBopacity : BrushToolAopacity
-   hFIFimgA := 0
+   hFIFimgA := useSelArea := 0
    cloneBits := clonePitch := 0
    defineRelativeSelCoords(imgW, imgH)
    objuSel := InitHugeImgSelPath(0, imgW, imgH)
    zrr := recordUndoLevelHugeImagesNow(objuSel.bX1, objuSel.bY1, objuSel.bImgSelW, objuSel.bImgSelH)
-   useSelArea := 0
    If (editingSelectionNow=1 && BrushToolOutsideSelection>1)
    {
       useSelArea := 1
@@ -76267,7 +76265,7 @@ ActPaintBrushLargeNow() {
    hFIFtex := texBits := 0
    texPitch := texBpp := 0
    texW := texH := 0
-   If (BrushToolTexture>1 && brushSize>2 && BrushToolType>1)
+   If (BrushToolTexture>1 && isInRange(BrushToolType, 2, 6) && brushSize>3)
    {
       texPath := mainExecPath "\resources\brush-texture-" BrushToolTexture ".png"
       hFIFtex := FreeImage_Load(texPath)
@@ -76282,7 +76280,7 @@ ActPaintBrushLargeNow() {
          hFIFtexRescaled := trFreeImage_Rescale(hFIFtex, brImgSelW, brImgSelH, 3)
          FreeImage_UnLoad(hFIFtex)
          hFIFtex := hFIFtexRescaled
-         If (thisToolAngle != 0 && thisToolAngle != 360)
+         If (thisToolAngle!=0 && thisToolAngle!=360)
          {
             hFIFtexRotated := FreeImage_Rotate(hFIFtex, thisToolAngle)
             If hFIFtexRotated
