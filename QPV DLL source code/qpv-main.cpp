@@ -8408,7 +8408,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                    continue;
 
                 if (accOpa+weight>opaf)
-                   weight = clamp(opaf - (accOpa + weight), 0.0f, 1.0f);
+                   weight = clamp(opaf - accOpa, 0.0f, 1.0f);
                 brushOpacityMap[coord] += weight;
             }
 
