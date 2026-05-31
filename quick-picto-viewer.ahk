@@ -1,4 +1,4 @@
-; Script details:
+﻿; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -76445,6 +76445,7 @@ ActPaintBrushLargeNow() {
          avgDistY := (distY + distStepY)//2
          Loop
          {
+            ; loop interim brush steps
             Xgood := Ygood := 0
             If (dirX=1)
             {
@@ -76574,6 +76575,7 @@ ActPaintBrushLargeNow() {
    }
 
    setWhileLoopExec(0)
+   DllCall("qpvmain.dll\ResetBrushOpacityMap")
    If (thisIndex>10 || lastWasLowQuality=1)
       SetTimer, wrapResizeImageGDIwin, -60
    SetTimer, ResetImgLoadStatus, -100

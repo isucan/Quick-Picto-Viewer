@@ -8307,7 +8307,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int eX = endX;
     int sY = startY;
     int eY = endY;
-
+    float opaf = (opacity / 255.0f);
     if (brushType == 6) {
         if (offX < 0.0) {
             stepX = -1;
@@ -8400,18 +8400,18 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int srcG = tgtG;
             int srcR = tgtR;
             int srcA = tgtA;
-            float weight = (mask_val / 255.0f) * (opacity / 255.0f);
-            if (brushType == 2 && brushOverDraw == 0) {
+            float weight = (mask_val / 255.0f) * opaf;
+            if (brushType <= 2 && brushOverDraw == 0) {
                 std::pair<int, int> coord = {px, py};
                 float accOpa = brushOpacityMap[coord];
-                if (weight > accOpa) {
-                    float extraWeight = weight - accOpa;
-                    brushOpacityMap[coord] = weight;
-                    weight = extraWeight;
-                } else {
-                    weight = 0.0f;
-                }
+                if (accOpa>=opaf)
+                   continue;
+
+                if (accOpa+weight>opaf)
+                   weight = clamp(opaf - (accOpa + weight), 0.0f, 1.0f);
+                brushOpacityMap[coord] += weight;
             }
+
             int weightInt = clamp(weight * 255.0f, 0.0f, 255.0f);
             if (brushType == 1 || brushType == 2) {
                 // Paint brush: Solid/Soft Color
@@ -8583,7 +8583,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 }
             }
 
-            if (brushType==2 || brushType==3 || brushType>=5)
+            if ((brushType==2 || brushType==3 || brushType>=5) && blendMode>0)
             {
                 RGBAColor Orgb = { srcB, srcG, srcR, srcA };
                 RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
