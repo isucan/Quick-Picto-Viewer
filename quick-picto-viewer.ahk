@@ -44078,7 +44078,7 @@ updateUIbrushTool() {
          }
       }
 
-      actu := (BrushToolType=3) ? "SettingsGUIA: Disable" : "SettingsGUIA: Enable"
+      actu := (BrushToolType=3 && !viewportQPVimage.imgHandle) ? "SettingsGUIA: Disable" : "SettingsGUIA: Enable"
       GuiControl, % actu, BrushToolOverDraw
 
       tehLabel := (BrushToolType>=6) ? "&Auto-scale deformer" : "&Airbrush mode"
@@ -44106,7 +44106,7 @@ updateUIbrushTool() {
       uiSlidersArray["BrushToolAngle", 10] := !BrushToolAutoAngle
       uiSlidersArray["BrushToolSize", 5] := theSizeLabel
 
-      If (BrushToolType=1 && BrushToolSymmetryX=1 && BrushToolSymmetryY=1)
+      If (BrushToolType=1 && BrushToolSymmetryX=1 && BrushToolSymmetryY=1 && !viewportQPVimage.imgHandle)
          GuiControl, SettingsGUIA: Disable, BrushToolOverDraw
       Else If (BrushToolType=1 || BrushToolType=2)
          GuiControl, SettingsGUIA: Enable, BrushToolOverDraw
@@ -44114,8 +44114,9 @@ updateUIbrushTool() {
       SetTimer, WriteSettingsBrushPanel, -300
    } Else If (CurrentPanelTab=2)
    {
+      cloneraFX := (BrushToolType=3 && !viewportQPVimage.imgHandle) ? 1 : 0
       uiSlidersArray["BrushToolWetness", 10] := (BrushToolType<=2 || BrushToolType>=6) ? 1 : 0
-      uiSlidersArray["BrushToolBlurStrength", 10] := (BrushToolType=3 || BrushToolType=5) ? 1 : 0
+      uiSlidersArray["BrushToolBlurStrength", 10] := (cloneraFX=1 || BrushToolType=5) ? 1 : 0
 
       actu := (BrushToolType=2 || (BrushToolType=3 || BrushToolType>=5) && viewportQPVimage.imgHandle) ? "SettingsGUIA: Enable" : "SettingsGUIA: Disable"
       GuiControl, % actu, BrushToolBlendMode
@@ -44124,7 +44125,7 @@ updateUIbrushTool() {
       actu := (BrushToolType=3 || BrushToolType=5) ? "SettingsGUIA: Enable" : "SettingsGUIA: Disable"
       GuiControl, % actu, BrushToolApplyColorFX
 
-      actu2 := (BrushToolApplyColorFX=1 && (BrushToolType=3 || BrushToolType=5)) ? 1 : 0
+      actu2 := (BrushToolApplyColorFX=1 && (cloneraFX=1 || BrushToolType=5)) ? 1 : 0
       uiSlidersArray["PasteInPlaceLight", 10] := actu2
       uiSlidersArray["PasteInPlaceGamma", 10] := actu2
       uiSlidersArray["PasteInPlaceHue", 10] := actu2
@@ -76327,6 +76328,8 @@ ActPaintBrushLargeNow() {
    imgBits := FreeImage_GetBits(viewportQPVimage.imgHandle)
    imgPitch := FreeImage_GetStride(viewportQPVimage.imgHandle)
    imgBpp := FreeImage_GetBPP(viewportQPVimage.imgHandle)
+   If (imgBpp=32 && BrushToolType=4) ; eraser brush
+      currIMGdetails.HasAlpha := 1
 
    thisEffectHue   := (BrushToolApplyColorFX=1) ? PasteInPlaceHue : 0
    thisEffectSat   := (BrushToolApplyColorFX=1) ? PasteInPlaceSaturation : 0
@@ -76518,7 +76521,8 @@ ActPaintBrushLargeNow() {
             }
 
             Gosub, DrawPaintBrushLargeStep
-            If (BrushToolSymmetryX=1 || BrushToolSymmetryY=1)
+            okaySymmetry := (BrushToolType=6 || BrushToolType=3 && BrushToolDynamicCloner=1) ? 0 : 1
+            If ((BrushToolSymmetryX=1 || BrushToolSymmetryY=1) && okaySymmetry=1)
             {
                calcBrushSymmetryCoords(tkX, tkY, imgW, imgH, skX, skY)
                cur_tkX := skX
@@ -78487,7 +78491,11 @@ additionalHUDelements(mode, mainWidth, mainHeight, newW:=0, newH:=0, DestPosX:=0
     ; highlight image editing each symmetry axis
     thisThick := imgHUDbaseUnit/11
     Gdip_SetPenWidth(pPen4, thisThick)
-    isSymmetryAllowed := (AnyWindowOpen=64 && BrushToolType<4 && liveDrawingBrushTool=1) || (drawingShapeNow=1 && !AnyWindowOpen) ? 1 : 0
+    okaySymmetry := (BrushToolType=6 || BrushToolType=3 && BrushToolDynamicCloner=1) ? 0 : 1
+    If (!viewportQPVimage.imgHandle && BrushToolType>3)
+       okaySymmetry := 0
+
+    isSymmetryAllowed := (AnyWindowOpen=64 && okaySymmetry=1 && liveDrawingBrushTool=1) || (drawingShapeNow=1 && !AnyWindowOpen) ? 1 : 0
     ccX := (drawingShapeNow=1) ? Round(vpSymmetryPointXdp) : prevDestPosX + Round(prevResizedVPimgW * BrushToolSymmetryPointX)
     ccY := (drawingShapeNow=1) ? Round(vpSymmetryPointYdp) : prevDestPosY + Round(prevResizedVPimgH * BrushToolSymmetryPointY)
     If ((BrushToolSymmetryX=1 || CustomShapeSymmetry=1) && isSymmetryAllowed=1)

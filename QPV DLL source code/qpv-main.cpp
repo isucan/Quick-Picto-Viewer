@@ -8401,7 +8401,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int srcR = tgtR;
             int srcA = tgtA;
             float weight = (mask_val / 255.0f) * opaf;
-            if (brushType <= 2 && brushOverDraw == 0) {
+            if (brushType <= 5 && brushOverDraw == 0) {
                 std::pair<int, int> coord = {px, py};
                 float accOpa = brushOpacityMap[coord];
                 if (accOpa >= opaf)
