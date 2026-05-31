@@ -8121,6 +8121,21 @@ int reverse_bits(int n) {
 }
 */
 
+struct PairHash {
+    template <class T1, class T2>
+    std::size_t operator () (const std::pair<T1, T2> &p) const {
+        auto h1 = std::hash<T1>{}(p.first);
+        auto h2 = std::hash<T2>{}(p.second);
+        return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+    }
+};
+
+std::unordered_map<std::pair<int, int>, float, PairHash> brushOpacityMap;
+
+DLL_API void DLL_CALLCONV ResetBrushOpacityMap() {
+    brushOpacityMap.clear();
+}
+
 DLL_API int DLL_CALLCONV PaintBrushLarge(
     unsigned char* imgData,  // FreeImage pixel buffer (from FreeImage_GetBits)
     int imgW,                // Image width
@@ -8155,7 +8170,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int texW,                // Texture width
     int texH,                // Texture height
     int texPitch,            // Texture stride
-    int texBpp               // Texture bits-per-pixel
+    int texBpp,              // Texture bits-per-pixel
+    int brushOverDraw        // BrushToolOverDraw (0 or 1)
 ) {
     if (!imgData || imgW <= 0 || imgH <= 0 || pitch <= 0 || brushSize <= 0)
         return 0;
@@ -8385,6 +8401,17 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int srcR = tgtR;
             int srcA = tgtA;
             float weight = (mask_val / 255.0f) * (opacity / 255.0f);
+            if (brushType == 2 && brushOverDraw == 0) {
+                std::pair<int, int> coord = {px, py};
+                float accOpa = brushOpacityMap[coord];
+                if (weight > accOpa) {
+                    float extraWeight = weight - accOpa;
+                    brushOpacityMap[coord] = weight;
+                    weight = extraWeight;
+                } else {
+                    weight = 0.0f;
+                }
+            }
             int weightInt = clamp(weight * 255.0f, 0.0f, 255.0f);
             if (brushType == 1 || brushType == 2) {
                 // Paint brush: Solid/Soft Color

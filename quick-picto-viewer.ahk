@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -76322,6 +76322,7 @@ ActPaintBrushLargeNow() {
    pdx := pdy := 0
    ShowTheImage("set-prev", imgPath)
    setWhileLoopExec(1)
+   DllCall("qpvmain.dll\ResetBrushOpacityMap")
 
    imgBits := FreeImage_GetBits(viewportQPVimage.imgHandle)
    imgPitch := FreeImage_GetStride(viewportQPVimage.imgHandle)
@@ -76630,7 +76631,8 @@ DrawPaintBrushLargeStep:
       , "int", texW
       , "int", texH
       , "int", texPitch
-      , "int", texBpp)
+      , "int", texBpp
+      , "int", BrushToolOverDraw)
 Return
 }
 
