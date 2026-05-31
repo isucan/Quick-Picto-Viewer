@@ -8404,12 +8404,12 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             if (brushType <= 2 && brushOverDraw == 0) {
                 std::pair<int, int> coord = {px, py};
                 float accOpa = brushOpacityMap[coord];
-                if (accOpa>=opaf)
+                if (accOpa >= weight)
                    continue;
 
-                if (accOpa+weight>opaf)
-                   weight = clamp(opaf - accOpa, 0.0f, 1.0f);
-                brushOpacityMap[coord] += weight;
+                float limitOpa = weight;
+                weight = (limitOpa - accOpa) / (1.0f - accOpa);
+                brushOpacityMap[coord] = limitOpa;
             }
 
             int weightInt = clamp(weight * 255.0f, 0.0f, 255.0f);
