@@ -8155,8 +8155,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int texW,                // Texture width
     int texH,                // Texture height
     int texPitch,            // Texture stride
-    int texBpp,              // Texture bits-per-pixel
-    unsigned char* strokeMask // Grayscale opacity buffer for current stroke (null if overdraw enabled)
+    int texBpp               // Texture bits-per-pixel
 ) {
     if (!imgData || imgW <= 0 || imgH <= 0 || pitch <= 0 || brushSize <= 0)
         return 0;
@@ -8365,14 +8364,6 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
 
             if (mask_val == 0)
                 continue;
-
-            if (strokeMask) {
-                INT64 maskIdx = (INT64)py * imgW + px;
-                if (mask_val > strokeMask[maskIdx]) {
-                    strokeMask[maskIdx] = mask_val;
-                }
-                mask_val = strokeMask[maskIdx];
-            }
 
             // Target pixel pointer in imgData (bottom-up scanline)
             int iy = imgH - 1 - py;

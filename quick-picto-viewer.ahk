@@ -76251,7 +76251,6 @@ ActPaintBrushLargeNow() {
    thisOpacity := (thisUseSecondaryColor=1) ? BrushToolBopacity : BrushToolAopacity
    hFIFimgA := useSelArea := 0
    cloneBits := clonePitch := 0
-   strokeMask := 0
    If (BrushToolOverDraw = 0)
    {
       hFIFimgA := FreeImage_Clone(viewportQPVimage.imgHandle)
@@ -76259,7 +76258,6 @@ ActPaintBrushLargeNow() {
       {
          cloneBits := FreeImage_GetBits(hFIFimgA)
          clonePitch := FreeImage_GetStride(hFIFimgA)
-         VarSetCapacity(strokeMask, imgW * imgH, 0)
       }
    }
    defineRelativeSelCoords(imgW, imgH)
@@ -76643,8 +76641,7 @@ DrawPaintBrushLargeStep:
       , "int", texW
       , "int", texH
       , "int", texPitch
-      , "int", texBpp
-      , "UPtr", strokeMask ? &strokeMask : 0)
+      , "int", texBpp)
 Return
 }
 
