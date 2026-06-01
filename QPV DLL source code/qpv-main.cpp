@@ -8121,10 +8121,19 @@ int reverse_bits(int n) {
 }
 */
 
-std::vector<float> brushOpacityMap;
+std::vector<float*> brushOpacityChunks;
+int chunkGridW = 0;
+int chunkGridH = 0;
 
 DLL_API void DLL_CALLCONV ResetBrushOpacityMap() {
-    std::vector<float>().swap(brushOpacityMap);
+    for (float* ptr : brushOpacityChunks) {
+        if (ptr) {
+            delete[] ptr;
+        }
+    }
+    std::vector<float*>().swap(brushOpacityChunks);
+    chunkGridW = 0;
+    chunkGridH = 0;
 }
 
 DLL_API int DLL_CALLCONV PaintBrushLarge(
@@ -8172,12 +8181,16 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
         return 0; // Only support 24-bit (BGR) and 32-bit (BGRA)
 
     if (brushType <= 5 && brushOverDraw == 0) {
-        if (brushOpacityMap.empty() || brushOpacityMap.size() != (size_t)imgW * imgH) {
-            try {
-                brushOpacityMap.assign((size_t)imgW * imgH, 0.0f);
-            } catch (const std::bad_alloc&) {
-                return 0;
+        int numChunksX = (imgW + 127) >> 7;
+        int numChunksY = (imgH + 127) >> 7;
+        size_t totalChunks = (size_t)numChunksX * numChunksY;
+        if (brushOpacityChunks.empty() || brushOpacityChunks.size() != totalChunks) {
+            for (float* ptr : brushOpacityChunks) {
+                if (ptr) delete[] ptr;
             }
+            brushOpacityChunks.assign(totalChunks, nullptr);
+            chunkGridW = numChunksX;
+            chunkGridH = numChunksY;
         }
     }
 
@@ -8405,17 +8418,32 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int srcA = tgtA;
             float weight = (mask_val / 255.0f) * opaf;
             if (brushType <= 5 && brushOverDraw == 0) {
-                size_t index = (size_t)py * imgW + px;
-                float accOpa = brushOpacityMap[index];
+                int cx = px >> 7;
+                int cy = py >> 7;
+                size_t chunkIdx = (size_t)cy * chunkGridW + cx;
+                float* chunk = brushOpacityChunks[chunkIdx];
+                if (!chunk) {
+                    try {
+                        chunk = new float[128 * 128]();
+                        brushOpacityChunks[chunkIdx] = chunk;
+                    } catch (const std::bad_alloc&) {
+                        return 0;
+                    }
+                }
+                int px_mod = px & 127;
+                int py_mod = py & 127;
+                int pixelIdx = (py_mod << 7) + px_mod;
+
+                float accOpa = chunk[pixelIdx];
                 if (accOpa >= opaf)
                    continue;
 
                 float maxAllowedWeight = (opaf - accOpa) / (1.0f - accOpa);
                 if (weight >= maxAllowedWeight) {
                     weight = maxAllowedWeight;
-                    brushOpacityMap[index] = opaf;
+                    chunk[pixelIdx] = opaf;
                 } else {
-                    brushOpacityMap[index] = accOpa + weight - accOpa * weight;
+                    chunk[pixelIdx] = accOpa + weight - accOpa * weight;
                 }
             }
 
