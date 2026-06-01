@@ -76259,9 +76259,7 @@ ActPaintBrushLargeNow() {
    {
       useSelArea := 1
       thisInvert := (BrushToolOutsideSelection = 3) ? 1 : 0
-       y1_topdown := imgH - objuSel.y2
-       y2_topdown := imgH - objuSel.y1 - 1
-       QPV_PrepareHugeImgSelectionArea(objuSel.x1, y1_topdown, objuSel.x2 - 1, y2_topdown, objuSel.imgSelW, objuSel.imgSelH, EllipseSelectMode, VPselRotation, 0, thisInvert, "a", "a", 1)
+      QPV_PrepareHugeImgSelectionArea(objuSel.x1, objuSel.y1, objuSel.x2 - 1, objuSel.y2 - 1, objuSel.imgSelW, objuSel.imgSelH, EllipseSelectMode, VPselRotation, 0, thisInvert, "a", "a", 1)
    }
 
    thisWet := 0.79 + (21 - thisWetness)/100

@@ -8328,7 +8328,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             // 1. Calculate selection constraints
             if (useSelArea)
             {
-                if (clipMaskFilter(px, py, NULL, 0) == 1)
+                if (clipMaskFilter(px, imgH - 1 - py, NULL, 0) == 1)
                    continue;
             }
 
