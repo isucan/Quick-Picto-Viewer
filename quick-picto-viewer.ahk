@@ -1,4 +1,4 @@
-; Script details:
+﻿; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -20133,12 +20133,13 @@ undoRedoHugeImagesAct() {
          Return
       }
 
+      sTime := A_TickCount
       tFrames := frameu := 1
       imgPath := viewportQPVimage.ImgFile
       viewportQPVimage.DiscardImage()
       killQPVscreenImgSection()
       Sleep, 1
-      viewportQPVimage.LoadImage(imgPath, frameu, 0, 1, [hFIFimgA, tFrames], 1)
+      viewportQPVimage.LoadImage(imgPath, frameu, 0, 1, [hFIFimgA, tFrames, 0, sTime], 1)
       SoundBeep 900, 100
       RemoveTooltip()
       currentImgModified := 1
@@ -20356,6 +20357,7 @@ MenuPerformTeleportToFIM() {
 
 convertImageIntoHugeImage(newW, newH, quality, clr:=0) {
    Critical, on
+   sTime := A_TickCount
    whichBitmap := useGdiBitmap()
    If !validBMP(whichBitmap)
    {
@@ -20397,7 +20399,7 @@ convertImageIntoHugeImage(newW, newH, quality, clr:=0) {
    killQPVscreenImgSection()
    currentImgModified := 1
    imgIndexEditing := currentFileIndex
-   r := viewportQPVimage.LoadImage(imgPath, 1, 0, 1, [hFIFimgA, 1], 1)
+   r := viewportQPVimage.LoadImage(imgPath, 1, 0, 1, [hFIFimgA, 1, 0, sTime], 1)
    If r
    {
       modus := (quality>=8) ? "new-image" : "resize"
@@ -20416,6 +20418,7 @@ HugeImagesConvertClrDepth(modus) {
    If warnHugeImageNotFIM()
       Return
 
+   sTime := A_TickCount
    hFIFimgX := viewportQPVimage.imgHandle
    oimgBPP := FreeImage_GetBPP(hFIFimgX)
    imgBPP := Trimmer(StrReplace(oimgBPP, "-"))
@@ -20486,7 +20489,7 @@ HugeImagesConvertClrDepth(modus) {
       viewportQPVimage.DiscardImage()
       killQPVscreenImgSection()
       Sleep, 1
-      viewportQPVimage.LoadImage(imgPath, frameu, 0, 1, [hFIFimgA, tFrames], 1)
+      viewportQPVimage.LoadImage(imgPath, frameu, 0, 1, [hFIFimgA, tFrames, 0, sTime], 1)
       SoundBeep 900, 100
       currIMGdetails.HasAlpha := InStr(ColorsType, "rgba") ? 1 : 0
       currIMGdetails.RawFormat := fileType " | " imgType
@@ -21832,6 +21835,7 @@ HugeImagesCropResizeRotate(w, h, modus, x:=0, y:=0, zw:=0, zh:=0, givenQuality:=
    If warnHugeImageNotFIM()
       Return
 
+   sTime := A_TickCount
    xx := (modus="resize") ? Ceil(w*1.5) : zw
    yy := (modus="resize") ? Ceil(h*1.5) : zh
    If (modus="new-image")
@@ -21893,7 +21897,7 @@ HugeImagesCropResizeRotate(w, h, modus, x:=0, y:=0, zw:=0, zh:=0, givenQuality:=
       viewportQPVimage.DiscardImage()
       killQPVscreenImgSection()
       Sleep, 1
-      viewportQPVimage.LoadImage(imgPath, frameu, 0, 1, [hFIFimgA, tFrames], 1)
+      viewportQPVimage.LoadImage(imgPath, frameu, 0, 1, [hFIFimgA, tFrames, 0, sTime], 1)
       If isVarEqualTo(modus,"resize", "new-image","rotate90")
       {
          oimgBPP := FreeImage_GetBPP(hFIFimgA)
@@ -72333,6 +72337,9 @@ LoadBitmapForScreen(imgPath, allowCaching, frameu, forceGDIp:=0) {
      w := viewportQPVimage.Width, h := viewportQPVimage.Height
      calcIMGdimensions(w, h, 300, 300, newW, newH)
      ; ToolTip, % w "|" h , , , 2
+     If (viewportQPVimage.LoadTime>60)
+        preventUndoLevels := 1
+
      oBitmap := trGdip_CreateBitmap(A_ThisFunc, newW, newH)
      currIMGdetails := []
      currIMGdetails.ImgFile := viewportQPVimage.ImgFile
@@ -76258,8 +76265,10 @@ ActPaintBrushLargeNow() {
    If (editingSelectionNow=1 && BrushToolOutsideSelection>1)
    {
       useSelArea := 1
-      thisInvert := (BrushToolOutsideSelection = 3) ? 1 : 0
+      thisInvert := (BrushToolOutsideSelection=3) ? 1 : 0
+      showTOOLtip("Preparing selection area...")
       QPV_PrepareHugeImgSelectionArea(objuSel.x1, objuSel.y1, objuSel.x2 - 1, objuSel.y2 - 1, objuSel.imgSelW, objuSel.imgSelH, EllipseSelectMode, VPselRotation, 0, thisInvert, "a", "a", 1)
+      RemoveTooltip()
    }
 
    thisWet := 0.79 + (21 - thisWetness)/100
@@ -76507,7 +76516,7 @@ ActPaintBrushLargeNow() {
                   fadeFactor := 0.01
 
                cur_opacity := Floor(thisOpacity * (BrushToolWetness/22) * fadeFactor)
-               If (BrushToolTexture=1 && thisIndex>1 && (A_TickCount - plza>450))
+               If (BrushToolTexture=1 && thisIndex>1 && (A_TickCount - plza>450) && BrushToolOverDraw=1)
                {
                   plza := A_TickCount
                   brushSize -= Ceil(BrushToolSize*0.05) + 1
@@ -76579,6 +76588,7 @@ ActPaintBrushLargeNow() {
    }
 
    setWhileLoopExec(0)
+   DllCall("qpvmain.dll\discardFilledPolygonCache", "int", 0)
    DllCall("qpvmain.dll\ResetBrushOpacityMap")
    If (thisIndex>10 || lastWasLowQuality=1)
       SetTimer, wrapResizeImageGDIwin, -60
@@ -96328,7 +96338,7 @@ initFIMGmodule() {
 
 LoadFimFile(imgPath, noBPPconv, noBMP:=0, frameu:=0, sizesDesired:=0, ByRef newBitmap:=0, nofall:=0, screenMode:=0) {
   Critical, on
-  sTime := A_tickcount  
+  sTime := A_TickCount
   initFIMGmodule()
   forceWic := (RegExMatch(imgPath, "i)(.\.(tiff|tif|gif))$") && noBMP=1) ? 1 : 0
   If (!wasInitFIMlib || forceWic=1)
@@ -96435,7 +96445,9 @@ LoadFimFile(imgPath, noBPPconv, noBMP:=0, frameu:=0, sizesDesired:=0, ByRef newB
 
   If (isImgSizeTooLarge(imgW, imgH) && screenMode=1)
   {
-     viewportQPVimage.LoadImage(imgPath, frameu, 0, 1, [hFIFimgA, tFrames], 1)
+     viewportQPVimage.LoadImage(imgPath, frameu, 0, 1, [hFIFimgA, tFrames, 0, sTime], 1)
+     If (viewportQPVimage.LoadTime>60)
+        preventUndoLevels := 1
      Return "very-large"
   }
 
@@ -97779,7 +97791,8 @@ teleportWICtoFIM(imgW, imgH, bitsDepth, useICM, simpleMode) {
    If memoryUsageWarning(imgW, imgH, bitsDepth, 1)
       Return 0
 
-   ; the stride is aligned to a multiple of 4 bytes (32 bits) for efficient memory access.
+   ; the stride is aligned to a multiple of 4 bytes (32 bits) for efficient memory access
+   sTime := A_TickCount
    bytesPerPixel := bitsDepth / 8
    widthBytes := imgW * bytesPerPixel
    Stride := Ceil(((widthBytes + 3) // 4) * 4)
@@ -97852,7 +97865,7 @@ teleportWICtoFIM(imgW, imgH, bitsDepth, useICM, simpleMode) {
       OpenedWith := viewportQPVimage.OpenedWith
       viewportQPVimage.DiscardImage()
       DllCall("qpvmain.dll\WICdestroyPreloadedImage", "Int", 1, "Int")
-      viewportQPVimage.LoadImage(imgPath, frameu, 0, 1, [hFIFimgA, tFrames, buffer], 1)
+      viewportQPVimage.LoadImage(imgPath, frameu, 0, 1, [hFIFimgA, tFrames, buffer, sTime], 1)
       ; ToolTip, % "teleported=" hFIFimgA "|" zw "|" zh "|" bufferSize , , , 2
       If !InStr(viewportQPVimage.PixelFormat, "tone-map")
          viewportQPVimage.PixelFormat := PixelFormat

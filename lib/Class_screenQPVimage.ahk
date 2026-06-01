@@ -123,7 +123,7 @@ Class screenQPVimage {
    }
 
    LoadFreeImageFile(imgPath, frameu, noBMP:=0, externMode:=0, externHandle:=0, qualityRaw:=0) {
-     sTime := A_TickCount
+     sTime := externHandle[4] ? externHandle[4] : A_TickCount
      loadArgs := FIMdecideLoadArgs(imgPath, qualityRaw, GFT)
      If (noBMP=1)
         GFT := -1  ; FIF_LOAD_NOPIXELS
@@ -222,6 +222,7 @@ Class screenQPVimage {
      This.dpiX := dpiX
      This.dpiY := dpiY
      This.DPI := Round((dpiX + dpiY)/2)
+     This.LoadTime := Round((A_TickCount - sTime)/60, 1)
      This.FIMcolors := ColorsType
      This.FIMtype := imgType
      This.FIMbpp := imgBPP

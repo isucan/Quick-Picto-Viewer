@@ -8134,6 +8134,7 @@ std::unordered_map<std::pair<int, int>, float, PairHash> brushOpacityMap;
 
 DLL_API void DLL_CALLCONV ResetBrushOpacityMap() {
     brushOpacityMap.clear();
+    // brushOpacityMap.shrink_to_fit();
 }
 
 DLL_API int DLL_CALLCONV PaintBrushLarge(
