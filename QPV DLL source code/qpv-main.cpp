@@ -467,15 +467,33 @@ bool initBoolMaskData() {
     // fnOutputDebug("polygonMaskMap refilled to zero ; size = " + std::to_string(s) + "|" + std::to_string(polyW) + " x " + std::to_string(polyH) + "|" + std::to_string(polyX) + " x " + std::to_string(polyY));
     return 1;
 }
+inline bool isPointInPolygonOptimized(const INT64 pX, const INT64 pY, const float* PointsList, const std::vector<int>& activeEdges, const int PointsCount) {
+    bool inside = false;
+    for (int i : activeEdges) {
+        int j = i - 2;
+        if (j < 0)
+            j = PointsCount * 2 - 2;
 
-void traceMaskPolyBoundaries(const int &w, const int &h, float* &PointsList, const int &PointsCount, const int &ppx1, const int &ppy1, const int &ppx2, const int &ppy2, std::vector<std::unordered_set<int>> &polygonMapEdges, std::vector<int> &polygonMapMin) {
+        const float xi = PointsList[i];
+        const float yi = PointsList[i + 1];
+        const float xj = PointsList[j];
+        const float yj = PointsList[j + 1];
+
+        if (pX < (xj - xi) * (pY - yi) / (yj - yi) + xi)
+            inside = !inside;
+    }
+    return inside;
+}
+
+void traceMaskPolyBoundaries(const int &w, const int &h, float* &PointsList, const int &PointsCount, const int &ppx1, const int &ppy1, const int &ppx2, const int &ppy2, std::vector<std::vector<int>> &polygonMapEdges, std::vector<int> &polygonMapMin) {
     int i = 2;
     int xa = PointsList[0];
     int ya = PointsList[1];
-    // fnOutputDebug("traceMaskPolyBoundaries(): tracing polygonal path with bresenham algo");
+    
+    polygonMapMin.assign(h, INT_MAX);
+
     for (int pts = 0; pts < PointsCount;)
     {
-        polygonMapMin.assign(h, INT_MAX);
         int xb = PointsList[i];
         i++;
         int yb = PointsList[i];
@@ -488,23 +506,25 @@ void traceMaskPolyBoundaries(const int &w, const int &h, float* &PointsList, con
 
         pts++;
         if (max(ya, yb)<ppy1 || min(ya, yb)>ppy2)
-        // if (max(ya, yb)<ppy1 || min(ya, yb)>ppy2 || min(xa, xb)>ppx2 && polygonMapMin[ya]!=INT_MAX && polygonMapMin[yb]!=INT_MAX)
-        // if ((max(xa, xb)<ppx1 || max(ya, yb)<ppy1) || (min(xa, xb)>ppx2 || min(ya, yb)>ppy2))
         {
-           // fnOutputDebug(" poly segment skipped=" + std::to_string(pts));
            xa = xb;
            ya = yb;
            continue;
         }
 
-        // fnOutputDebug("seg[ " + std::to_string(i) + "@" + std::to_string(pts) + " ]=( " + std::to_string(xa) + " | " + std::to_string(ya) + ", " + std::to_string(xb) + " | " + std::to_string(yb) + ");");
         bresenham_line_algo(w, h, xa, ya, xb, yb, polygonMapMin);
         int maxu = (max(ya, yb) >= ppy2) ? ppy2 - 1 : max(ya, yb);
         int minu = (min(ya, yb) <= ppy1) ? ppy1 : min(ya, yb);
         for (int yy = minu; yy <= maxu; yy++)
         {
             if (polygonMapMin[yy]!=INT_MAX)
-               polygonMapEdges[yy].emplace( polygonMapMin[yy] );
+               polygonMapEdges[yy].push_back( polygonMapMin[yy] );
+        }
+
+        // Reset only the modified range of polygonMapMin back to INT_MAX
+        for (int yy = minu; yy <= maxu; yy++)
+        {
+            polygonMapMin[yy] = INT_MAX;
         }
 
         xa = xb;
@@ -514,123 +534,120 @@ void traceMaskPolyBoundaries(const int &w, const int &h, float* &PointsList, con
     }
 }
 
-void fillMaskPolyBounds(const int &w, const int &h, float* &PointsList, const int &PointsCount, const int &ppx1, const int &ppy1, const int &ppx2, const int &ppy2, const bool &simpleMode, std::vector<std::unordered_set<int>> &polygonMapEdges) {
-    // fnOutputDebug("fill mask image using the list of x-pairs identified and stored in polygonMapEdges");
-    int countPIPcalls = 0;
-    #pragma omp parallel for schedule(dynamic) default(none) // num_threads(3)
+void fillMaskPolyBounds(const int &w, const int &h, float* &PointsList, const int &PointsCount, const int &ppx1, const int &ppy1, const int &ppx2, const int &ppy2, const bool &simpleMode, std::vector<std::vector<int>> &polygonMapEdges) {
+    // 1. Pre-calculate active edge counts to avoid reallocations
+    std::vector<int> counts(h, 0);
+    for (int i = 0; i < PointsCount * 2; i += 2)
+    {
+        int j = i - 2;
+        if (j < 0)
+            j = PointsCount * 2 - 2;
+
+        int y_min = min((int)PointsList[i + 1], (int)PointsList[j + 1]);
+        int y_max = max((int)PointsList[i + 1], (int)PointsList[j + 1]);
+        int start_y = max(0, y_min);
+        int end_y = min(h - 1, y_max - 1);
+        for (int y = start_y; y <= end_y; ++y)
+            counts[y]++;
+    }
+
+    // 2. Build Active Edge Index per scanline
+    std::vector<std::vector<int>> crossingEdges(h);
+    for (int y = 0; y < h; ++y)
+    {
+        crossingEdges[y].reserve(counts[y]);
+    }
+    for (int i = 0; i < PointsCount * 2; i += 2)
+    {
+        int j = i - 2;
+        if (j < 0)
+            j = PointsCount * 2 - 2;
+
+        int y_min = min((int)PointsList[i + 1], (int)PointsList[j + 1]);
+        int y_max = max((int)PointsList[i + 1], (int)PointsList[j + 1]);
+        int start_y = max(0, y_min);
+        int end_y = min(h - 1, y_max - 1);
+        for (int y = start_y; y <= end_y; ++y)
+        {
+            crossingEdges[y].push_back(i);
+        }
+    }
+
+    #pragma omp parallel for schedule(dynamic) default(none) shared(polygonMapEdges, crossingEdges, PointsList, ppy1, ppy2, ppx1, ppx2, simpleMode, PointsCount, polyY, polyW, polyX, polygonMaskMap)
     for (int y = 0; y < h; ++y)
     {
         if (polygonMapEdges[y].empty())
-        {
-           // fnOutputDebug("empty Y=" + std::to_string(y));
            continue;
-        }
 
         if (y<=ppy1 || y>=ppy2)
-        {
-           // fnOutputDebug("out of ppy range; Y=" + std::to_string(y));
            continue;
-        }
 
-        std::vector<int> listu;
-        listu.assign(polygonMapEdges[y].begin(), polygonMapEdges[y].end());
-        if (listu.empty())
-        {
-           // fnOutputDebug("empty list at Y=" + std::to_string(y));
+        std::vector<int>& listu = polygonMapEdges[y];
+        
+        // Sort and deduplicate in-place
+        sort(listu.begin(), listu.end());
+        listu.erase(unique(listu.begin(), listu.end()), listu.end());
+
+        if (listu.empty() || listu.size() == 1)
            continue;
-        }
 
-        // std::stringstream ss;
-        // fnOutputDebug(std::to_string(h) + "=h ; " + std::to_string(listu.size()) + " list size Y=" + std::to_string(y));
-        if (listu.size()==1)
-        {
-           // fnOutputDebug(" one element list at Y=" + std::to_string(y));
-           continue;
-        }
+        const std::vector<int>& activeEdges = crossingEdges[y];
 
-        sort(listu.begin(), listu.end()); 
         for (INT64 i = 0; i < listu.size() - 1; i++)
         {
              INT64 xa = listu[i];
              INT64 xb = listu[i + 1];
              if (xb==xa)
-             {
-                // fnOutputDebug("skipped identical xa/xb, Y=" + std::to_string(y));
                 continue;
-             }
 
              if (max(xa,xb)<ppx1 || min(xa,xb)>=ppx2)
-             {
-                // fnOutputDebug("xa/xb out of ppx range; skipped Y=" + std::to_string(y));
                 continue;
-             }
 
-             // we could always say these are to be filled [the first pair with (i>0) and the last pair (i=listu.size - 1)]
-             // but there are corner cases which screw it up
              if (listu.size()>2 && simpleMode==0)
              {
-                 // countPIPcalls++;
-                 if (!isPointInPolygon((xa + xb)/2, y, PointsList, PointsCount))
-                    continue;
+                  if (!isPointInPolygonOptimized((xa + xb)/2, y, PointsList, activeEdges, PointsCount))
+                     continue;
              }
 
              if (xb<xa)
                 swap(xa,xb);
 
-             // fnOutputDebug(std::to_string(midX) + "=midX == yaaaaay");
              for (INT64 x = xa; x <= xb; x++)
              {
                   if (x<=ppx1 || x>=ppx2)
-                  {
-                     // if (x>=ppx2)
-                     //    fnOutputDebug("x out of ppx range; x=" + std::to_string(x));
                      continue;
-                  }
                   polygonMaskMap[(INT64)(y - polyY) * polyW + x - polyX] = 1;
              }
         }
-        // OutputDebugStringA(ss.str().data());
     }
-
-    // fnOutputDebug("fill mask image - done; calls to isPointInPolygon() executed: " + std::to_string(countPIPcalls));
 }
 
 int FillMaskPolygon(int w, int h, float* PointsList, int PointsCount, int ppx1, int ppy1, int ppx2, int ppy2) {
-    // see comments for prepareSelectionArea()
     fnOutputDebug("FillMaskPolygon() invoked; PointsCount=" + std::to_string(PointsCount));
     bool goodState = initBoolMaskData();
     if (goodState==0)
        return 0;
 
-    // int boundMaxX = 0;
     int boundMaxY = 0;
     int boundMinX = INT_MAX;
     int boundMinY = INT_MAX;
     for ( int i = 0; i < PointsCount*2; i+=2)
     {
-        // prepare points list and identify boundaries
         PointsList[i] = round(PointsList[i]);
         PointsList[i + 1] = round(PointsList[i + 1]) + polyOffYa - polyOffYb;
-        // boundMaxX = max(PointsList[i], boundMaxX);
         boundMaxY = max((int)PointsList[i + 1], boundMaxY);
-        // boundMinX = min(PointsList[i], boundMinX);
-        // boundMinY = min(PointsList[i + 1], boundMinY);
     }
 
-    std::vector<std::unordered_set<int>>  polygonMapEdges;
+    std::vector<std::vector<int>>  polygonMapEdges;
     std::vector<int> polygonMapMin;
 
     int hmax = max(boundMaxY, h) + 1;
-    // fnOutputDebug(std::to_string(hmax) + "=hmax; bound rect={" + std::to_string(boundMinX) + "," + std::to_string(boundMinY) + "," + std::to_string(boundMaxX) + "," + std::to_string(boundMaxY) + "}");
     polygonMapMin.resize(hmax);
     fnOutputDebug("polygonMapMin reserved");
-    polygonMapEdges.reserve(hmax);
-    for (int i=0; i<hmax; i++)
-    {
-        polygonMapEdges.emplace_back();
-    }
-
+    
+    polygonMapEdges.resize(hmax);
     fnOutputDebug("polygonMapEdges reserved");
+
     traceMaskPolyBoundaries(w, h, PointsList, PointsCount, ppx1, ppy1, ppx2, ppy2, polygonMapEdges, polygonMapMin);
     fnOutputDebug("traceMaskPolyBoundaries done");
     fillMaskPolyBounds(w, h, PointsList, PointsCount, ppx1, ppy1, ppx2, ppy2, 0, polygonMapEdges);
@@ -640,7 +657,6 @@ int FillMaskPolygon(int w, int h, float* PointsList, int PointsCount, int ppx1, 
     polygonMapEdges.shrink_to_fit();
     polygonMapMin.clear();
     polygonMapMin.shrink_to_fit();
-    // fnOutputDebug("polygonMapEdges discarded");
     return 1;
 }
 

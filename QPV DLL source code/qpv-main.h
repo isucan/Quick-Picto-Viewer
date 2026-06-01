@@ -59,8 +59,8 @@ IWICBitmapFrameDecode  *pWICclassFrameDecoded;
 IWICBitmapSource       *pWICclassPixelsBitmapSource;
 
 std::vector<unsigned char>  highDephMaskMap;
-std::vector<bool>  polygonMaskMap;
-std::vector<bool>  polygonOtherMaskMap;
+std::vector<unsigned char>  polygonMaskMap;
+std::vector<unsigned char>  polygonOtherMaskMap;
 // std::vector<std::vector<short>> DrawLineCapsGrid;
 vector<pair<float, float>> DrawLineCapsGrid;
 // vector<pair<int, int>> DrawLineGrid;
