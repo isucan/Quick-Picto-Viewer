@@ -8121,20 +8121,10 @@ int reverse_bits(int n) {
 }
 */
 
-struct PairHash {
-    template <class T1, class T2>
-    std::size_t operator () (const std::pair<T1, T2> &p) const {
-        auto h1 = std::hash<T1>{}(p.first);
-        auto h2 = std::hash<T2>{}(p.second);
-        return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
-    }
-};
-
-std::unordered_map<std::pair<int, int>, float, PairHash> brushOpacityMap;
+std::vector<float> brushOpacityMap;
 
 DLL_API void DLL_CALLCONV ResetBrushOpacityMap() {
-    brushOpacityMap.clear();
-    // brushOpacityMap.shrink_to_fit();
+    std::vector<float>().swap(brushOpacityMap);
 }
 
 DLL_API int DLL_CALLCONV PaintBrushLarge(
@@ -8180,6 +8170,16 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int bytesPerPixel = imgBpp / 8;
     if (bytesPerPixel != 3 && bytesPerPixel != 4)
         return 0; // Only support 24-bit (BGR) and 32-bit (BGRA)
+
+    if (brushType <= 5 && brushOverDraw == 0) {
+        if (brushOpacityMap.empty() || brushOpacityMap.size() != (size_t)imgW * imgH) {
+            try {
+                brushOpacityMap.assign((size_t)imgW * imgH, 0.0f);
+            } catch (const std::bad_alloc&) {
+                return 0;
+            }
+        }
+    }
 
     int halfW = (texData && texW > 0) ? (texW / 2 + abs(bulgePinchFactor)) : (brushSize / 2 + abs(bulgePinchFactor));
     int halfH = (texData && texH > 0) ? (texH / 2 + abs(bulgePinchFactor)) : (brushSize / 2 + abs(bulgePinchFactor));
@@ -8405,17 +8405,17 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int srcA = tgtA;
             float weight = (mask_val / 255.0f) * opaf;
             if (brushType <= 5 && brushOverDraw == 0) {
-                std::pair<int, int> coord = {px, py};
-                float accOpa = brushOpacityMap[coord];
+                size_t index = (size_t)py * imgW + px;
+                float accOpa = brushOpacityMap[index];
                 if (accOpa >= opaf)
                    continue;
 
                 float maxAllowedWeight = (opaf - accOpa) / (1.0f - accOpa);
                 if (weight >= maxAllowedWeight) {
                     weight = maxAllowedWeight;
-                    brushOpacityMap[coord] = opaf;
+                    brushOpacityMap[index] = opaf;
                 } else {
-                    brushOpacityMap[coord] = accOpa + weight - accOpa * weight;
+                    brushOpacityMap[index] = accOpa + weight - accOpa * weight;
                 }
             }
 
