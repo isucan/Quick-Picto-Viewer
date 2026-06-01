@@ -8339,8 +8339,61 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     if (dest_radius < 0.5)
        dest_radius = 0.5;
 
-    // Cache-friendly: py is now the outer loop, and px is the inner loop!
-    for (int py = sY; stepY > 0 ? py <= eY : py >= eY; py += stepY) {
+    // Thread-safe chunk pre-allocation (Single-Threaded)
+    if (brushType <= 5 && brushOverDraw == 0) {
+        int startCY = startY >> 7;
+        int endCY = endY >> 7;
+        int startCX = startX >> 7;
+        int endCX = endX >> 7;
+        for (int cy = startCY; cy <= endCY; ++cy) {
+            size_t cy_grid = (size_t)cy * chunkGridW;
+            for (int cx = startCX; cx <= endCX; ++cx) {
+                size_t chunkIdx = cy_grid + cx;
+                if (chunkIdx < brushOpacityChunks.size() && !brushOpacityChunks[chunkIdx]) {
+                    try {
+                        brushOpacityChunks[chunkIdx] = new float[128 * 128]();
+                    } catch (const std::bad_alloc&) {
+                        return 0;
+                    }
+                }
+            }
+        }
+    }
+
+    double use_rx = rx;
+    double use_ry = ry;
+    double use_cosA = cosA;
+    double use_sinA = sinA;
+    if (brushType == 7 || brushType == 8) {
+        double max_rad = min(brushSize / 2.0, dest_radius);
+        use_rx = max_rad;
+        use_ry = max_rad;
+        use_cosA = 1.0;
+        use_sinA = 0.0;
+    }
+
+    double invRx = 1.0 / rx;
+    double invRy = 1.0 / ry;
+    double invUseRx = 1.0 / use_rx;
+    double invUseRy = 1.0 / use_ry;
+
+    // Pre-calculate constants for rotated ellipse mathematical boundaries
+    double k1 = use_cosA * invUseRx;
+    double k2 = use_sinA * invUseRx;
+    double k3 = use_sinA * invUseRy;
+    double k4 = use_cosA * invUseRy;
+    double A_coeff = k1 * k1 + k3 * k3;
+    double B_term_factor = 2.0 * (k3 * k4 - k1 * k2);
+    double C_term_factor = k2 * k2 + k4 * k4;
+
+    int minY = min(startY, endY);
+    int maxY = max(startY, endY);
+    int totalStepsY = maxY - minY + 1;
+
+    // Multi-threaded outer loop (100% thread-safe)
+    #pragma omp parallel for schedule(dynamic)
+    for (int i = 0; i < totalStepsY; ++i) {
+        int py = (stepY > 0) ? (sY + i) : (sY - i);
         int iy = imgH - 1 - py;
         INT64 rowOffset = (INT64)iy * pitch;
 
@@ -8356,7 +8409,38 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             cy_grid = (size_t)cy * chunkGridW;
         }
 
-        for (int px = sX; stepX > 0 ? px <= eX : px >= eX; px += stepX) {
+        // Determine row-level pixel range
+        int scan_sX = sX;
+        int scan_eX = eX;
+
+        if (!texData || texW <= 0 || texH <= 0) {
+            double Y = py - tkY;
+            double B_coeff = Y * B_term_factor;
+            double C_coeff = Y * Y * C_term_factor - 1.0;
+            double discriminant = B_coeff * B_coeff - 4.0 * A_coeff * C_coeff;
+
+            if (discriminant < 0.0) {
+                continue; // The row does not intersect the ellipse/circle
+            }
+
+            double sqrt_d = sqrt(discriminant);
+            double x_min = (-B_coeff - sqrt_d) / (2.0 * A_coeff);
+            double x_max = (-B_coeff + sqrt_d) / (2.0 * A_coeff);
+
+            // Map back to canvas coords & clamp to bounding box
+            int leftX = clamp((int)floor(tkX + x_min), min(sX, eX), max(sX, eX));
+            int rightX = clamp((int)ceil(tkX + x_max), min(sX, eX), max(sX, eX));
+
+            if (stepX > 0) {
+                scan_sX = leftX;
+                scan_eX = rightX;
+            } else {
+                scan_sX = rightX;
+                scan_eX = leftX;
+            }
+        }
+
+        for (int px = scan_sX; stepX > 0 ? px <= scan_eX : px >= scan_eX; px += stepX) {
             // 1. Calculate selection constraints
             if (useSelArea) {
                 if (clipMaskFilter(px, iy, NULL, 0) == 1)
@@ -8386,7 +8470,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 double rotY = src_dx * sinA + src_dy * cosA;
                 
                 // Evaluate using squared distance (saves an expensive sqrt per pixel)
-                double dist_norm_sq = (rotX / rx) * (rotX / rx) + (rotY / ry) * (rotY / ry);
+                double dist_norm_sq = (rotX * invRx) * (rotX * invRx) + (rotY * invRy) * (rotY * invRy);
                 if (dist_norm_sq > 1.0)
                    continue;
 
