@@ -8337,12 +8337,34 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
         }
     }
 
-    for (int px = sX; stepX > 0 ? px <= eX : px >= eX; px += stepX) {
-        for (int py = sY; stepY > 0 ? py <= eY : py >= eY; py += stepY) {
+    // Pre-calculate bulge/pinch constants
+    double dest_radius = brushSize / 2.0 + bulgePinchFactor;
+    if (dest_radius < 0.5)
+        dest_radius = 0.5;
+
+    double falloff_sq = falloff * falloff;
+
+    // Cache-friendly: py is now the outer loop, and px is the inner loop!
+    for (int py = sY; stepY > 0 ? py <= eY : py >= eY; py += stepY) {
+        int iy = imgH - 1 - py;
+        INT64 rowOffset = (INT64)iy * pitch;
+
+        // Pre-calculate Y-dependent values for standard brushes chunk lookup
+        int cy = 0;
+        int py_mod = 0;
+        int py_mod_shift = 0;
+        size_t cy_grid = 0;
+        if (brushType <= 5 && brushOverDraw == 0) {
+            cy = py >> 7;
+            py_mod = py & 127;
+            py_mod_shift = py_mod << 7;
+            cy_grid = (size_t)cy * chunkGridW;
+        }
+
+        for (int px = sX; stepX > 0 ? px <= eX : px >= eX; px += stepX) {
             // 1. Calculate selection constraints
-            if (useSelArea)
-            {
-                if (clipMaskFilter(px, imgH - 1 - py, NULL, 0) == 1)
+            if (useSelArea) {
+                if (clipMaskFilter(px, iy, NULL, 0) == 1)
                    continue;
             }
 
@@ -8350,15 +8372,12 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             double dx = px - tkX;
             double dy = py - tkY;
 
-            // For pinch/bulge, distort coords
             double src_dx = dx;
             double src_dy = dy;
-            double dest_radius = brushSize / 2.0 + bulgePinchFactor;
-            if (dest_radius < 0.5)
-               dest_radius = 0.5;
 
-            double r_dest = sqrt(dx * dx + dy * dy);
+            // Only call sqrt for bulge/pinch brushes (types 7 and 8)
             if (brushType == 7 || brushType == 8) {
+                double r_dest = sqrt(dx * dx + dy * dy);
                 if (r_dest >= dest_radius)
                     continue;
                 src_dx = dx * ((brushSize / 2.0) / dest_radius);
@@ -8380,13 +8399,17 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             } else {
                 double rotX = src_dx * cosA - src_dy * sinA;
                 double rotY = src_dx * sinA + src_dy * cosA;
-                double dist_norm = sqrt((rotX / rx) * (rotX / rx) + (rotY / ry) * (rotY / ry));
+                
+                // Evaluate using squared distance (saves an expensive sqrt per pixel)
+                double dist_norm_sq = (rotX / rx) * (rotX / rx) + (rotY / ry) * (rotY / ry);
 
-                if (dist_norm > 1.0)
+                if (dist_norm_sq > 1.0)
                     continue;
 
                 if (softness > 0) {
-                    if (dist_norm >= falloff) {
+                    if (dist_norm_sq >= falloff_sq) {
+                        // Only compute sqrt if we are in the outer soft boundary
+                        double dist_norm = sqrt(dist_norm_sq);
                         mask_val = (int)(255.0 * (1.0 - dist_norm) / (1.0 - falloff));
                         if (mask_val < 0) mask_val = 0;
                         if (mask_val > 255) mask_val = 255;
@@ -8397,9 +8420,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             if (mask_val == 0)
                 continue;
 
-            // Target pixel pointer in imgData (bottom-up scanline)
-            int iy = imgH - 1 - py;
-            unsigned char* targetPixel = imgData + (INT64)iy * pitch + px * bytesPerPixel;
+            // Sequential/cache-friendly pixel lookups (100% L1/L2 hits)
+            unsigned char* targetPixel = imgData + rowOffset + px * bytesPerPixel;
 
             // Read target color (BGRA or BGR)
             int tgtB = targetPixel[0];
@@ -8419,8 +8441,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             float weight = (mask_val / 255.0f) * opaf;
             if (brushType <= 5 && brushOverDraw == 0) {
                 int cx = px >> 7;
-                int cy = py >> 7;
-                size_t chunkIdx = (size_t)cy * chunkGridW + cx;
+                size_t chunkIdx = cy_grid + cx;
                 float* chunk = brushOpacityChunks[chunkIdx];
                 if (!chunk) {
                     try {
@@ -8431,8 +8452,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                     }
                 }
                 int px_mod = px & 127;
-                int py_mod = py & 127;
-                int pixelIdx = (py_mod << 7) + px_mod;
+                int pixelIdx = py_mod_shift + px_mod;
 
                 float accOpa = chunk[pixelIdx];
                 if (accOpa >= opaf)
@@ -8457,8 +8477,6 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             }
             else if (brushType == 3) {
                 // Cloner brush: sample from srcData
-                // offX/offY are calculated relative to user-defined coordinates (tinyPrevAreaCoordX/Y)
-                // and adjusted dynamically in AHK when BrushToolDynamicCloner is active.
                 int srcX = clamp((int)round(px - offX), 0, imgW - 1);
                 int srcY = clamp((int)round(py - offY), 0, imgH - 1);
                 unsigned char* srcData = cloneData ? cloneData : imgData;
