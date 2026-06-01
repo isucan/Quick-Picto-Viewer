@@ -1763,7 +1763,7 @@ unsigned char clipMaskFilter(const int &x, const int &y, const unsigned char *ma
              r = polygonMaskMap[(INT64)(y - imgSelY1 - polyY + polyOffYa) * polyW + x - imgSelX1 - polyX];
           }
 
-           // fnOutputDebug("clipMaskFilter y=" + std::to_string(y - imgSelY1 - polyY + polyOffYa));
+          // fnOutputDebug("clipMaskFilter y=" + std::to_string(y - imgSelY1 - polyY + polyOffYa));
           return !r;
        } else if (EllipseSelectMode==1 || EllipseSelectMode==0 && (vpSelRotation!=0 || excludeSelectScale!=0))
        {
@@ -8192,7 +8192,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     std::vector<unsigned char> localClone;
     int localPitch = roiW * bytesPerPixel;
     if (!cloneData && (brushType == 7 || brushType == 8) && roiW > 0 && roiH > 0) {
-        // pinch bulge brushes
+        // pinch and bulge brushes
         localClone.resize((size_t)roiW * roiH * bytesPerPixel);
         for (int ry = 0; ry < roiH; ++ry) {
             int img_py = startY + ry;
@@ -8247,6 +8247,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     float saturateFactor = 0.0f;
 
     if (brushType == 5) {
+        // Effects brush
         // Prepare LUT tables as in AdjustImageColorsPrecise
         if (brushBright < 0) {
             double zamma = 1.0f / ((float)(77069.0f - brushBright) / 77069.0f);
@@ -8309,6 +8310,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int eY = endY;
     float opaf = (opacity / 255.0f);
     if (brushType == 6) {
+        // smudge brush
         if (offX < 0.0) {
             stepX = -1;
             sX = endX;
