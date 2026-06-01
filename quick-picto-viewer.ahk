@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -76258,8 +76258,10 @@ ActPaintBrushLargeNow() {
    If (editingSelectionNow=1 && BrushToolOutsideSelection>1)
    {
       useSelArea := 1
-      thisInvert := BrushToolOutsideSelection - 1
-      QPV_PrepareHugeImgSelectionArea(objuSel.x1, objuSel.y1, objuSel.x2 - 1, objuSel.y2 - 1, objuSel.imgSelW, objuSel.imgSelH, EllipseSelectMode, VPselRotation, 0, thisInvert, "a", "a", 1)
+      thisInvert := (BrushToolOutsideSelection = 3) ? 1 : 0
+       y1_topdown := imgH - objuSel.y2
+       y2_topdown := imgH - objuSel.y1 - 1
+       QPV_PrepareHugeImgSelectionArea(objuSel.x1, y1_topdown, objuSel.x2 - 1, y2_topdown, objuSel.imgSelW, objuSel.imgSelH, EllipseSelectMode, VPselRotation, 0, thisInvert, "a", "a", 1)
    }
 
    thisWet := 0.79 + (21 - thisWetness)/100
