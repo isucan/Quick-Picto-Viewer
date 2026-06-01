@@ -8121,10 +8121,6 @@ int reverse_bits(int n) {
 }
 */
 
-std::vector<float*> brushOpacityChunks;
-int chunkGridW = 0;
-int chunkGridH = 0;
-
 DLL_API void DLL_CALLCONV ResetBrushOpacityMap() {
     for (float* ptr : brushOpacityChunks) {
         if (ptr) {
@@ -8178,7 +8174,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
 
     int bytesPerPixel = imgBpp / 8;
     if (bytesPerPixel != 3 && bytesPerPixel != 4)
-        return 0; // Only support 24-bit (BGR) and 32-bit (BGRA)
+       return 0; // Only support 24-bit (BGR) and 32-bit (BGRA)
 
     if (brushType <= 5 && brushOverDraw == 0) {
         int numChunksX = (imgW + 127) >> 7;
@@ -8253,7 +8249,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int brushBright = effectLight * 257;
     int brushContra = (int)round(effectGamma * 655.30);
     if (brushContra > 65525)
-        brushContra = 65525;
+       brushContra = 65525;
 
     float fiBright = 0.0f;
     float factorContrast = 0.0f;
@@ -8338,11 +8334,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     }
 
     // Pre-calculate bulge/pinch constants
+    double falloff_sq = falloff * falloff;
     double dest_radius = brushSize / 2.0 + bulgePinchFactor;
     if (dest_radius < 0.5)
-        dest_radius = 0.5;
-
-    double falloff_sq = falloff * falloff;
+       dest_radius = 0.5;
 
     // Cache-friendly: py is now the outer loop, and px is the inner loop!
     for (int py = sY; stepY > 0 ? py <= eY : py >= eY; py += stepY) {
@@ -8371,18 +8366,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             // 2. Compute rotated coordinates and elliptical mask
             double dx = px - tkX;
             double dy = py - tkY;
-
             double src_dx = dx;
             double src_dy = dy;
-
-            // Only call sqrt for bulge/pinch brushes (types 7 and 8)
-            if (brushType == 7 || brushType == 8) {
-                double r_dest = sqrt(dx * dx + dy * dy);
-                if (r_dest >= dest_radius)
-                    continue;
-                src_dx = dx * ((brushSize / 2.0) / dest_radius);
-                src_dy = dy * ((brushSize / 2.0) / dest_radius);
-            }
 
             int mask_val = 255;
             if (texData && texW > 0 && texH > 0) {
@@ -8402,9 +8387,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 
                 // Evaluate using squared distance (saves an expensive sqrt per pixel)
                 double dist_norm_sq = (rotX / rx) * (rotX / rx) + (rotY / ry) * (rotY / ry);
-
                 if (dist_norm_sq > 1.0)
-                    continue;
+                   continue;
 
                 if (softness > 0) {
                     if (dist_norm_sq >= falloff_sq) {
@@ -8418,7 +8402,16 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             }
 
             if (mask_val == 0)
-                continue;
+               continue;
+
+            if (brushType == 7 || brushType == 8) {
+                // bulge/pinch brushes
+                double r_dest = sqrt(dx * dx + dy * dy);
+                if (r_dest >= dest_radius)
+                    continue;
+                src_dx = dx * ((brushSize / 2.0) / dest_radius);
+                src_dy = dy * ((brushSize / 2.0) / dest_radius);
+            }
 
             // Sequential/cache-friendly pixel lookups (100% L1/L2 hits)
             unsigned char* targetPixel = imgData + rowOffset + px * bytesPerPixel;
@@ -8652,16 +8645,15 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             outR = weighTwoValues(srcR, tgtR, weight);
             outG = weighTwoValues(srcG, tgtG, weight);
             outB = weighTwoValues(srcB, tgtB, weight);
-            if (bytesPerPixel == 4) {
-                outA = weighTwoValues(srcA, tgtA, weight);
-            }
+            if (bytesPerPixel == 4)
+               outA = weighTwoValues(srcA, tgtA, weight);
+
             // Write back to imgData
             targetPixel[0] = clamp(outB, 0, 255);
             targetPixel[1] = clamp(outG, 0, 255);
             targetPixel[2] = clamp(outR, 0, 255);
-            if (bytesPerPixel == 4) {
-                targetPixel[3] = clamp(outA, 0, 255);
-            }
+            if (bytesPerPixel == 4)
+               targetPixel[3] = clamp(outA, 0, 255);
         }
     }
     return 1;
