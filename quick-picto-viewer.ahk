@@ -6065,7 +6065,8 @@ corelivePreviewsImageEditing(modus:=0) {
          livePreviewSimpleColorsAdjustImage()
    }
 
-   fnOutputDebug("redraw: " A_ThisFunc)
+   If (liveDrawingBrushTool!=1)
+      fnOutputDebug("redraw: " A_ThisFunc)
    If (showViewPortGrid=1 && imgEditPanelOpened=1)
       drawVPgridsNow(mainWidth, mainHeight, 2NDglPG)
 

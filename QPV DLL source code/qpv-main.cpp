@@ -632,7 +632,9 @@ int FillMaskPolygon(int w, int h, float* PointsList, int PointsCount, int ppx1, 
 
     fnOutputDebug("polygonMapEdges reserved");
     traceMaskPolyBoundaries(w, h, PointsList, PointsCount, ppx1, ppy1, ppx2, ppy2, polygonMapEdges, polygonMapMin);
+    fnOutputDebug("traceMaskPolyBoundaries done");
     fillMaskPolyBounds(w, h, PointsList, PointsCount, ppx1, ppy1, ppx2, ppy2, 0, polygonMapEdges);
+    fnOutputDebug("fillMaskPolyBounds done");
 
     polygonMapEdges.clear();
     polygonMapEdges.shrink_to_fit();
@@ -8419,9 +8421,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             double C_coeff = Y * Y * C_term_factor - 1.0;
             double discriminant = B_coeff * B_coeff - 4.0 * A_coeff * C_coeff;
 
-            if (discriminant < 0.0) {
-                continue; // The row does not intersect the ellipse/circle
-            }
+            if (discriminant < 0.0)
+               continue; // The row does not intersect the ellipse/circle
 
             double sqrt_d = sqrt(discriminant);
             double x_min = (-B_coeff - sqrt_d) / (2.0 * A_coeff);
@@ -8525,7 +8526,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                         chunk = new float[128 * 128]();
                         brushOpacityChunks[chunkIdx] = chunk;
                     } catch (const std::bad_alloc&) {
-                        return 0;
+                        continue;
                     }
                 }
                 int px_mod = px & 127;
