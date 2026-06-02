@@ -70,23 +70,22 @@ inline bool inRange(const int &low, const int &high, const int &x) {
     return (low <= x && x <= high);
 }
 
-int inline weighTwoValues(const float A, const float B, const float w) {
-    if (w>=1.0f)
+int inline weighTwoValues(float A, float B, float w) {
+    if (w >= 1.0f)
        return (int)round(A);
-    else if (w<=0.0f)
+    else if (w <= 0.0f)
        return (int)round(B);
     else
        return (int)round(w * (A - B) + B);
 }
 
-float inline weighTwoValues(const float A, const float B, const float w, const int r) {
-    if (w>=1)
+float inline weighTwoValues(float A, float B, float w, int r) {
+    if (w >= 1)
        return A;
-    else if (w<=0)
+    else if (w <= 0)
        return B;
     else
        return w * (A - B) + B;
-       // return (A*w + B*(1.0f - w));
 }
 
 static unsigned short gamma_to_linear[256];
@@ -215,36 +214,36 @@ std::string WideCharToString(const wchar_t* inwstr) {
     return converter.to_bytes(wstr);
 }
 
-int inline getGrayscale(const int &r, const int &g, const int &b) {
-    return clamp(char_to_grayRfloat[r] + char_to_grayGfloat[g] + char_to_grayBfloat[b], 0.0f, 255.0f);
+int inline getGrayscale(int r, int g, int b) {
+    return clamp((int)round(char_to_grayRfloat[clamp(r, 0, 255)] + char_to_grayGfloat[clamp(g, 0, 255)] + char_to_grayBfloat[clamp(b, 0, 255)]), 0, 255);
 }
 
-int inline brightMaths(const int &i, const float &fintensity) {
-    return clamp(i + round( (float)i*fintensity ), 0.0f, 255.0f);
+int inline brightMaths(int i, float fintensity) {
+    return clamp((int)(i + round((float)i * fintensity)), 0, 255);
 }
 
-int inline contraMaths(const int &i, const float &fintensity, const float &deviation) {
-    return clamp(floor( (float)fintensity * (i - 128.0f) ) + deviation, 0.0f, 255.0f);
+int inline contraMaths(int i, float fintensity, float deviation) {
+    return clamp((int)(floor(fintensity * (i - 128.0f)) + deviation), 0, 255);
 }
 
-int inline gammaMaths(const int &i, const double &gamma) {
-    return round(255.0f * pow(char_to_float[i], gamma));
+int inline gammaMaths(int i, double gamma) {
+    return round(255.0f * pow(char_to_float[clamp(i, 0, 255)], gamma));
 }
 
-int inline getInt16grayscale(const int &r, const int &g, const int &b) {
-    return clamp((int)(int_to_grayRi[r] + int_to_grayGi[g] + int_to_grayBi[b]), 0, 65535);
+int inline getInt16grayscale(int r, int g, int b) {
+    return clamp((int)(int_to_grayRi[clamp(r, 0, 65535)] + int_to_grayGi[clamp(g, 0, 65535)] + int_to_grayBi[clamp(b, 0, 65535)]), 0, 65535);
 }
 
-int inline brightMathsInt16(const int &i, const float &fintensity) {
-    return clamp(i + (float)i*fintensity, 0.0f, 65535.0f);
+int inline brightMathsInt16(int i, float fintensity) {
+    return clamp((int)(i + (float)i * fintensity), 0, 65535);
 }
 
-int inline contraMathsInt16(const int &i, const float &fintensity, const float &deviation) {
-    return clamp(floor( (float)fintensity * (i - 32768.0f) ) + deviation, 0.0f, 65535.0f);
+int inline contraMathsInt16(int i, float fintensity, float deviation) {
+    return clamp((int)(floor(fintensity * (i - 32768.0f)) + deviation), 0, 65535);
 }
 
-int inline gammaMathsInt16(const int &i, const double &gamma) {
-    return round(65535.0f * pow(int_to_float[i], gamma));
+int inline gammaMathsInt16(int i, double gamma) {
+    return round(65535.0f * pow(int_to_float[clamp(i, 0, 65535)], gamma));
 }
 
 
