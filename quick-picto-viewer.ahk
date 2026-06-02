@@ -2342,7 +2342,7 @@ initQPVmainDLL(modus:=0) {
    }
 
    Static srcDll := "e:\Sucan twins\_small-apps\AutoHotkey\my scripts\fast-image-viewer\cPlusPlus\qpv-main\x64\Release\qpvmain.dll"
-   Static AIsrcDll := "E:\Sucan twins\_small-apps\AutoHotkey\my scripts\fast-image-viewer\ai-dev\QPV DLL source code\x64\Release\qpvmain.dll"
+   Static AIsrcDll := "E:\Sucan twins\_small-apps\AutoHotkey\my scripts\_github\isucan-Quick-Picto-Viewer\QPV DLL source code\x64\Release\qpvmain.dll"
    If (A_PtrSize=8 && InStr(A_ScriptDir, "sucan twins") && !A_IsCompiled && FileExist(srcDll))
       DllPath := (InStr(A_ScriptDir, "\ai-dev") && FileExist(AIsrcDll)) ?  AIsrcDll : srcDll
 
