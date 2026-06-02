@@ -2344,7 +2344,7 @@ initQPVmainDLL(modus:=0) {
    Static srcDll := "e:\Sucan twins\_small-apps\AutoHotkey\my scripts\fast-image-viewer\cPlusPlus\qpv-main\x64\Release\qpvmain.dll"
    Static AIsrcDll := "E:\Sucan twins\_small-apps\AutoHotkey\my scripts\_github\isucan-Quick-Picto-Viewer\QPV DLL source code\x64\Release\qpvmain.dll"
    If (A_PtrSize=8 && InStr(A_ScriptDir, "sucan twins") && !A_IsCompiled && FileExist(srcDll))
-      DllPath := (InStr(A_ScriptDir, "\ai-dev") && FileExist(AIsrcDll)) ?  AIsrcDll : srcDll
+      DllPath := (InStr(A_ScriptDir, "\isucan-") && FileExist(AIsrcDll)) ?  AIsrcDll : srcDll
 
    qpvMainDll := DllCall("LoadLibraryW", "WStr", DllPath, "UPtr")
    addJournalEntry("INIT main QPV dll: " A_LastError "==" qpvMainDll "==" DllPath)
@@ -76622,7 +76622,7 @@ DrawPaintBrushLargeStep:
    }
 
    colorARGB := "0x" Format("{1:x}", 255) startToolColor
-   DllCall("qpvmain.dll\PaintBrushLarge"
+   rr := DllCall("qpvmain.dll\PaintBrushLarge"
       , "UPtr", imgBits
       , "int", imgW
       , "int", imgH
@@ -76658,7 +76658,9 @@ DrawPaintBrushLargeStep:
       , "int", texPitch
       , "int", texBpp
       , "int", BrushToolOverDraw)
-Return
+  If !rr 
+     fnOutputDebug("An error occured in calling PaintBrushLarge() from the QPV DLL.")
+  Return
 }
 
 FreeImage_GetPixelColorDirect(hFIF, x, y) {

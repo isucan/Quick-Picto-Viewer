@@ -402,7 +402,8 @@ void bresenham_line_algo(const int &w, const int &h, int x0, int y0, const int &
    const int dy = -abs(y1-y0), sy = (y0<y1) ? 1 : -1;
    int err = dx + dy, e2;                              /* error value e_xy */
 
-   for (;;) {                                             /* loop */
+   for (;;)
+   {                                             /* loop */
       // plotLineSetPixel(w, h, x0, y0);
       if (y0>=0 && y0<=h)
       {
@@ -413,7 +414,8 @@ void bresenham_line_algo(const int &w, const int &h, int x0, int y0, const int &
             polygonMaskMap[(UINT64)(y0 - polyY) * polyW + (x0 - polyX)] = 1;
       }
 
-      if (x0 == x1 && y0 == y1) break;
+      if (x0 == x1 && y0 == y1)
+         break;
 
       e2 = 2*err;
       if (e2 >= dy) { err += dy; x0 += sx; }                        /* x step */
@@ -561,6 +563,7 @@ void fillMaskPolyBounds(const int &w, const int &h, float* &PointsList, const in
     {
         crossingEdges[y].reserve(counts[y]);
     }
+
     for (int i = 0; i < PointsCount * 2; i += 2)
     {
         int j = i - 2;
@@ -591,7 +594,6 @@ void fillMaskPolyBounds(const int &w, const int &h, float* &PointsList, const in
         // Sort and deduplicate in-place
         sort(listu.begin(), listu.end());
         listu.erase(unique(listu.begin(), listu.end()), listu.end());
-
         if (listu.empty() || listu.size() == 1)
            continue;
 
@@ -620,6 +622,7 @@ void fillMaskPolyBounds(const int &w, const int &h, float* &PointsList, const in
              {
                   if (x<=ppx1 || x>=ppx2)
                      continue;
+
                   polygonMaskMap[(INT64)(y - polyY) * polyW + x - polyX] = 1;
              }
         }
@@ -8195,19 +8198,30 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int brushOverDraw        // BrushToolOverDraw (0 or 1)
 ) {
     if (!imgData || imgW <= 0 || imgH <= 0 || pitch <= 0 || brushSize <= 0)
+    {
+
+        fnOutputDebug("PaintBrushLarge(): incorrect data provided");
         return 0;
+    }
 
     int bytesPerPixel = imgBpp / 8;
     if (bytesPerPixel != 3 && bytesPerPixel != 4)
-       return 0; // Only support 24-bit (BGR) and 32-bit (BGRA)
+    {
+       fnOutputDebug("PaintBrushLarge() only supports 24-bit (BGR) and 32-bit (BGRA) formats.");
+       return 0;
+    }
 
-    if (brushType <= 5 && brushOverDraw == 0) {
+    if (brushType <= 5 && brushOverDraw == 0)
+    {
         int numChunksX = (imgW + 127) >> 7;
         int numChunksY = (imgH + 127) >> 7;
         size_t totalChunks = (size_t)numChunksX * numChunksY;
-        if (brushOpacityChunks.empty() || brushOpacityChunks.size() != totalChunks) {
-            for (float* ptr : brushOpacityChunks) {
-                if (ptr) delete[] ptr;
+        if (brushOpacityChunks.empty() || brushOpacityChunks.size() != totalChunks)
+        {
+            for (float* ptr : brushOpacityChunks)
+            {
+                if (ptr)
+                   delete[] ptr;
             }
             brushOpacityChunks.assign(totalChunks, nullptr);
             chunkGridW = numChunksX;
@@ -8226,10 +8240,12 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int roiH = endY - startY + 1;
     std::vector<unsigned char> localClone;
     int localPitch = roiW * bytesPerPixel;
-    if (!cloneData && (brushType == 7 || brushType == 8) && roiW > 0 && roiH > 0) {
+    if (!cloneData && (brushType == 7 || brushType == 8) && roiW > 0 && roiH > 0)
+    {
         // pinch and bulge brushes
         localClone.resize((size_t)roiW * roiH * bytesPerPixel);
-        for (int ry = 0; ry < roiH; ++ry) {
+        for (int ry = 0; ry < roiH; ++ry)
+        {
             int img_py = startY + ry;
             int img_iy = imgH - 1 - img_py;
             unsigned char* srcRow = imgData + (INT64)img_iy * pitch + startX * bytesPerPixel;
@@ -8244,9 +8260,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int brushG = (brushColor >> 8) & 0xFF;
     int brushB = brushColor & 0xFF;
 
-    if (brushType == 6 && softness < 40) {
-        softness = 40;
-    }
+    if (brushType == 6 && softness < 40)
+       softness = 40;
 
     // Softness calculations
     double falloff = (100.0 - softness) / 100.0;
@@ -8281,33 +8296,41 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     float fiContra = 0.0f;
     float saturateFactor = 0.0f;
 
-    if (brushType == 5) {
+    if (brushType == 5)
+    {
         // Effects brush
         // Prepare LUT tables as in AdjustImageColorsPrecise
-        if (brushBright < 0) {
+        if (brushBright < 0)
+        {
             double zamma = 1.0f / ((float)(77069.0f - brushBright) / 77069.0f);
-            for (int i = 0; i < 65536; i++) {
+            for (int i = 0; i < 65536; i++)
+            {
                 LUTgammaBright[i] = gammaMathsInt16(i, zamma);
             }
         }
 
         fiBright = (brushBright > 0) ? brushBright / 32768.0f : -1.0f * int_to_float[-brushBright];
-        if (brushBright != 0) {
-            for (int i = 0; i < 65536; i++) {
+        if (brushBright != 0)
+        {
+            for (int i = 0; i < 65536; i++)
+            {
                 LUTbright[i] = brightMathsInt16(i, fiBright);
             }
         }
 
         factorContrast = brushContra / 98302.0f;
         fiContra = (65536.5f * (brushContra + 65535.0f)) / (65535.0f * (65536.5f - brushContra));
-        if (brushContra != 0) {
-            for (int i = 0; i < 65536; i++) {
+        if (brushContra != 0)
+        {
+            for (int i = 0; i < 65536; i++)
+            {
                 LUTcontra[i] = contraMathsInt16(i, fiContra, 32768);
             }
         }
 
         saturateFactor = (brushSat < 0) ? (65535.0f - abs(brushSat)) / 131070.0f : 0.5f + brushSat / 131070.0f;
-        if (effectBlur > 2) {
+        if (effectBlur > 2)
+        {
             int radius = effectBlur;
             roiStartX = clamp(startX - radius, 0, imgW - 1);
             roiEndX = clamp(endX + radius, 0, imgW - 1);
@@ -8317,7 +8340,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int roiW = roiEndX - roiStartX + 1;
             int roiH = roiEndY - roiStartY + 1;
 
-            if (roiW > 0 && roiH > 0) {
+            if (roiW > 0 && roiH > 0)
+            {
                 unsigned char* srcData = cloneData ? cloneData : imgData;
                 int srcPitch = cloneData ? clonePitch : pitch;
                 int clr = (bytesPerPixel == 4) ? CV_8UC4 : CV_8UC3;
@@ -8344,14 +8368,17 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int sY = startY;
     int eY = endY;
     float opaf = (opacity / 255.0f);
-    if (brushType == 6) {
+    if (brushType == 6)
+    {
         // smudge brush
-        if (offX < 0.0) {
+        if (offX < 0.0)
+        {
             stepX = -1;
             sX = endX;
             eX = startX;
         }
-        if (offY < 0.0) {
+        if (offY < 0.0)
+        {
             stepY = -1;
             sY = endY;
             eY = startY;
@@ -8365,16 +8392,20 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
        dest_radius = 0.5;
 
     // Thread-safe chunk pre-allocation (Single-Threaded)
-    if (brushType <= 5 && brushOverDraw == 0) {
+    if (brushType <= 5 && brushOverDraw == 0)
+    {
         int startCY = startY >> 7;
         int endCY = endY >> 7;
         int startCX = startX >> 7;
         int endCX = endX >> 7;
-        for (int cy = startCY; cy <= endCY; ++cy) {
+        for (int cy = startCY; cy <= endCY; ++cy)
+        {
             size_t cy_grid = (size_t)cy * chunkGridW;
-            for (int cx = startCX; cx <= endCX; ++cx) {
+            for (int cx = startCX; cx <= endCX; ++cx)
+            {
                 size_t chunkIdx = cy_grid + cx;
-                if (chunkIdx < brushOpacityChunks.size() && !brushOpacityChunks[chunkIdx]) {
+                if (chunkIdx < brushOpacityChunks.size() && !brushOpacityChunks[chunkIdx])
+                {
                     try {
                         brushOpacityChunks[chunkIdx] = new float[128 * 128]();
                     } catch (const std::bad_alloc&) {
@@ -8389,7 +8420,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     double use_ry = ry;
     double use_cosA = cosA;
     double use_sinA = sinA;
-    if (brushType == 7 || brushType == 8) {
+    if (brushType == 7 || brushType == 8)
+    {
         double max_rad = min(brushSize / 2.0, dest_radius);
         use_rx = max_rad;
         use_ry = max_rad;
@@ -8417,7 +8449,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
 
     // Multi-threaded outer loop (100% thread-safe)
     #pragma omp parallel for schedule(dynamic)
-    for (int i = 0; i < totalStepsY; ++i) {
+    for (int i = 0; i < totalStepsY; ++i)
+    {
         int py = (stepY > 0) ? (sY + i) : (sY - i);
         int iy = imgH - 1 - py;
         INT64 rowOffset = (INT64)iy * pitch;
@@ -8427,7 +8460,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
         int py_mod = 0;
         int py_mod_shift = 0;
         size_t cy_grid = 0;
-        if (brushType <= 5 && brushOverDraw == 0) {
+        if (brushType <= 5 && brushOverDraw == 0)
+        {
             cy = py >> 7;
             py_mod = py & 127;
             py_mod_shift = py_mod << 7;
@@ -8438,7 +8472,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
         int scan_sX = sX;
         int scan_eX = eX;
 
-        if (!texData || texW <= 0 || texH <= 0) {
+        if (!texData || texW <= 0 || texH <= 0)
+        {
             double Y = py - tkY;
             double B_coeff = Y * B_term_factor;
             double C_coeff = Y * Y * C_term_factor - 1.0;
@@ -8455,18 +8490,22 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int leftX = clamp((int)floor(tkX + x_min), min(sX, eX), max(sX, eX));
             int rightX = clamp((int)ceil(tkX + x_max), min(sX, eX), max(sX, eX));
 
-            if (stepX > 0) {
+            if (stepX > 0)
+            {
                 scan_sX = leftX;
                 scan_eX = rightX;
-            } else {
+            } else
+            {
                 scan_sX = rightX;
                 scan_eX = leftX;
             }
         }
 
-        for (int px = scan_sX; stepX > 0 ? px <= scan_eX : px >= scan_eX; px += stepX) {
+        for (int px = scan_sX; stepX > 0 ? px <= scan_eX : px >= scan_eX; px += stepX)
+        {
             // 1. Calculate selection constraints
-            if (useSelArea) {
+            if (useSelArea)
+            {
                 if (clipMaskFilter(px, iy, NULL, 0) == 1)
                    continue;
             }
@@ -8478,10 +8517,12 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             double src_dy = dy;
 
             int mask_val = 255;
-            if (texData && texW > 0 && texH > 0) {
+            if (texData && texW > 0 && texH > 0)
+            {
                 int tx = (int)(dx + texW / 2.0);
                 int ty = (int)(dy + texH / 2.0);
-                if (tx >= 0 && tx < texW && ty >= 0 && ty < texH) {
+                if (tx >= 0 && tx < texW && ty >= 0 && ty < texH)
+                {
                     int texBytes = texBpp / 8;
                     int t_iy = texH - 1 - ty;
                     unsigned char* texPixel = texData + (INT64)t_iy * texPitch + tx * texBytes;
@@ -8489,7 +8530,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 } else {
                     mask_val = 0;
                 }
-            } else {
+            } else
+            {
                 double rotX = src_dx * cosA - src_dy * sinA;
                 double rotY = src_dx * sinA + src_dy * cosA;
                 
@@ -8498,13 +8540,17 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 if (dist_norm_sq > 1.0)
                    continue;
 
-                if (softness > 0) {
-                    if (dist_norm_sq >= falloff_sq) {
+                if (softness > 0)
+                {
+                    if (dist_norm_sq >= falloff_sq)
+                    {
                         // Only compute sqrt if we are in the outer soft boundary
                         double dist_norm = sqrt(dist_norm_sq);
                         mask_val = (int)(255.0 * (1.0 - dist_norm) / (1.0 - falloff));
-                        if (mask_val < 0) mask_val = 0;
-                        if (mask_val > 255) mask_val = 255;
+                        if (mask_val < 0)
+                           mask_val = 0;
+                        if (mask_val > 255)
+                           mask_val = 255;
                     }
                 }
             }
@@ -8512,7 +8558,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             if (mask_val == 0)
                continue;
 
-            if (brushType == 7 || brushType == 8) {
+            if (brushType == 7 || brushType == 8)
+            {
                 // bulge/pinch brushes
                 double r_dest = sqrt(dx * dx + dy * dy);
                 if (r_dest >= dest_radius)
@@ -8540,11 +8587,13 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int srcR = tgtR;
             int srcA = tgtA;
             float weight = (mask_val / 255.0f) * opaf;
-            if (brushType <= 5 && brushOverDraw == 0) {
+            if (brushType <= 5 && brushOverDraw == 0)
+            {
                 int cx = px >> 7;
                 size_t chunkIdx = cy_grid + cx;
                 float* chunk = brushOpacityChunks[chunkIdx];
-                if (!chunk) {
+                if (!chunk)
+                {
                     try {
                         chunk = new float[128 * 128]();
                         brushOpacityChunks[chunkIdx] = chunk;
@@ -8560,23 +8609,26 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                    continue;
 
                 float maxAllowedWeight = (opaf - accOpa) / (1.0f - accOpa);
-                if (weight >= maxAllowedWeight) {
+                if (weight >= maxAllowedWeight)
+                {
                     weight = maxAllowedWeight;
                     chunk[pixelIdx] = opaf;
-                } else {
+                } else
+                {
                     chunk[pixelIdx] = accOpa + weight - accOpa * weight;
                 }
             }
 
             int weightInt = clamp(weight * 255.0f, 0.0f, 255.0f);
-            if (brushType == 1 || brushType == 2) {
+            if (brushType == 1 || brushType == 2)
+            {
                 // Paint brush: Solid/Soft Color
                 srcR = brushR;
                 srcG = brushG;
                 srcB = brushB;
                 srcA = brushA;
-            }
-            else if (brushType == 3) {
+            } else if (brushType == 3)
+            {
                 // Cloner brush: sample from srcData
                 int srcX = clamp((int)round(px - offX), 0, imgW - 1);
                 int srcY = clamp((int)round(py - offY), 0, imgH - 1);
@@ -8589,24 +8641,25 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 srcG = srcPixel[1];
                 srcR = srcPixel[2];
                 srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
-            }
-            else if (brushType == 4) {
+            } else if (brushType == 4)
+            {
                 // Eraser brush
-                if (bytesPerPixel == 3) {
+                if (bytesPerPixel == 3)
+                {
                     // Restore mode: restore color and alpha from cloneData
                     srcR = 0;
                     srcG = 0;
                     srcB = 0;
                     srcA = 255;
-                }
-                else if (bytesPerPixel == 4) {
+                } else if (bytesPerPixel == 4)
+                {
                     if (eraserMode == 1)
                        srcA = opacity;  // Replace/overdraw alpha
                     else
                        srcA = max(0, tgtA - opacity);  // Standard erase: reduce alpha
                 }
-            }
-            else if (brushType == 5) {
+            } else if (brushType == 5)
+            {
                 // Effects brush: Hue, Saturation, Lightness, Gamma, Blur
                 int effB = tgtB;
                 int effG = tgtG;
@@ -8614,40 +8667,41 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 int effA = tgtA;
 
                 // 1. Box Blur using OpenCV
-                if (hasBlurredRoi) {
+                if (hasBlurredRoi)
+                {
                     int localX = px - roiStartX;
                     int localY = roiEndY - py;
-                    if (localX >= 0 && localX < blurredRoi.cols && localY >= 0 && localY < blurredRoi.rows) {
+                    if (localX >= 0 && localX < blurredRoi.cols && localY >= 0 && localY < blurredRoi.rows)
+                    {
                         const unsigned char* blurredPixel = blurredRoi.ptr<unsigned char>(localY, localX);
                         effB = blurredPixel[0];
                         effG = blurredPixel[1];
                         effR = blurredPixel[2];
-                        if (bytesPerPixel == 4) {
-                            effA = blurredPixel[3];
-                        }
+                        if (bytesPerPixel == 4)
+                           effA = blurredPixel[3];
                     }
                 }
 
                 // 2. Lightness, Gamma/Contrast, Hue, Saturation adjustments using RGBA16color
                 RGBA16color pixel = { char_to_int[effB], char_to_int[effG], char_to_int[effR], char_to_int[effA] };
-                if (brushBright != 0) {
-                    pixel.brightness(brushBright, 1, 0, fiBright);
-                }
-                if (brushContra != 0) {
-                    pixel.contrast(brushContra, 0, linearGamma, factorContrast, 0, fiContra);
-                }
-                if (brushHue != 0) {
-                    pixel.hueRotate(brushHue, saturateFactor, 1, brushSat);
-                }
-                if (brushSat != 0) {
-                    pixel.saturation(brushSat, 1, linearGamma, saturateFactor);
-                }
+                if (brushBright!=0)
+                   pixel.brightness(brushBright, 1, 0, fiBright);
+
+                if (brushContra!=0)
+                   pixel.contrast(brushContra, 0, linearGamma, factorContrast, 0, fiContra);
+
+                if (brushHue!=0)
+                   pixel.hueRotate(brushHue, saturateFactor, 1, brushSat);
+
+                if (brushSat!=0)
+                   pixel.saturation(brushSat, 1, linearGamma, saturateFactor);
+
                 srcB = int_to_char[pixel.b];
                 srcG = int_to_char[pixel.g];
                 srcR = int_to_char[pixel.r];
                 srcA = int_to_char[pixel.a];
-            }
-            else if (brushType == 6) {
+            } else if (brushType == 6)
+            {
                 // Smudge brush: grab pixels from previous offset position with bilinear interpolation
                 double srcXf = clamp((double)px - offX, 0.0, (double)(imgW - 1));
                 double srcYf = clamp((double)py - offY, 0.0, (double)(imgH - 1));
@@ -8679,13 +8733,12 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 srcB = (int)round(w11 * p11[0] + w21 * p21[0] + w12 * p12[0] + w22 * p22[0]);
                 srcG = (int)round(w11 * p11[1] + w21 * p21[1] + w12 * p12[1] + w22 * p22[1]);
                 srcR = (int)round(w11 * p11[2] + w21 * p21[2] + w12 * p12[2] + w22 * p22[2]);
-                if (bytesPerPixel == 4) {
-                    srcA = (int)round(w11 * p11[3] + w21 * p21[3] + w12 * p12[3] + w22 * p22[3]);
-                } else {
-                    srcA = 255;
-                }
-            }
-            else if (brushType == 7 || brushType == 8) {
+                if (bytesPerPixel == 4)
+                   srcA = (int)round(w11 * p11[3] + w21 * p21[3] + w12 * p12[3] + w22 * p22[3]);
+                else
+                   srcA = 255;
+            } else if (brushType == 7 || brushType == 8)
+            {
                 // Pinch / Bulge brush: scale coordinate mapping with bilinear interpolation
                 double srcXf = clamp(tkX + src_dx, 0.0, (double)(imgW - 1));
                 double srcYf = clamp(tkY + src_dy, 0.0, (double)(imgH - 1));
@@ -8704,7 +8757,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 double w22 = fx * fy;
 
                 unsigned char *p11, *p21, *p12, *p22;
-                if (!localClone.empty()) {
+                if (!localClone.empty())
+                {
                     int lx1 = clamp(x1 - startX, 0, roiW - 1);
                     int ly1 = clamp(y1 - startY, 0, roiH - 1);
                     int lx2 = clamp(x2 - startX, 0, roiW - 1);
@@ -8714,7 +8768,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                     p21 = localClone.data() + (INT64)ly1 * localPitch + lx2 * bytesPerPixel;
                     p12 = localClone.data() + (INT64)ly2 * localPitch + lx1 * bytesPerPixel;
                     p22 = localClone.data() + (INT64)ly2 * localPitch + lx2 * bytesPerPixel;
-                } else {
+                } else
+                {
                     unsigned char* srcData = cloneData ? cloneData : imgData;
                     int srcPitch = cloneData ? clonePitch : pitch;
 
@@ -8730,11 +8785,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 srcB = (int)round(w11 * p11[0] + w21 * p21[0] + w12 * p12[0] + w22 * p22[0]);
                 srcG = (int)round(w11 * p11[1] + w21 * p21[1] + w12 * p12[1] + w22 * p22[1]);
                 srcR = (int)round(w11 * p11[2] + w21 * p21[2] + w12 * p12[2] + w22 * p22[2]);
-                if (bytesPerPixel == 4) {
-                    srcA = (int)round(w11 * p11[3] + w21 * p21[3] + w12 * p12[3] + w22 * p22[3]);
-                } else {
-                    srcA = 255;
-                }
+                if (bytesPerPixel == 4)
+                   srcA = (int)round(w11 * p11[3] + w21 * p21[3] + w12 * p12[3] + w22 * p22[3]);
+                else
+                   srcA = 255;
             }
 
             if ((brushType==2 || brushType==3 || brushType>=5) && blendMode>0)
