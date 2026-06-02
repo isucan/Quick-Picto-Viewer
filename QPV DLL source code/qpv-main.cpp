@@ -92,6 +92,8 @@ static unsigned short gamma_to_linear[256];
 static unsigned char linear_to_gamma[32769];
 static float char_to_float[256];
 static float char_to_floatGamma[256];
+static float char_to_float_sqrt[256];
+static float char_to_floatGamma_sqrt[256];
 static float char_to_grayRfloat[256];
 static float char_to_grayGfloat[256];
 static float char_to_grayBfloat[256];
@@ -153,6 +155,8 @@ DLL_API int DLL_CALLCONV initWICnow(UINT modus, int threadIDu) {
         char_to_grayBfloat[i] = i*0.114180f;
         char_to_int[i] = char_to_float[i] * 65535.0f;
         char_to_floatGamma[i] = pow(char_to_float[i], GAMMA);
+        char_to_float_sqrt[i] = sqrtf(char_to_float[i]);
+        char_to_floatGamma_sqrt[i] = sqrtf(char_to_floatGamma[i]);
     }
 
     for (int i = 0; i < 65536; i++) {
@@ -2254,62 +2258,68 @@ RGBColorI calculateBlendModes(int rO, int gO, int bO, int rB, int gB, int bB, in
 RGBAColor NEWERcalculateBlendModes(RGBAColor Orgb, RGBAColor Brgb, const int blendMode, const int flipLayers, const int linearGamma, const int keepAlpha, const int bpp, const int opacity) {
     // TO-DO this function must supersede/replace calculateBlendModes() used by clrBrushMixColors()
     float rT, gT, bT;
-    if (blendMode<24)
-       Orgb.a = clamp(Orgb.a - opacity, 0, 255);
+    if (blendMode < 24)
+       Orgb.a = std::max(Orgb.a - opacity, 0);
 
-    int oA = (keepAlpha==1 && blendMode==0 && flipLayers==1 || blendMode>=23 || blendMode==0) ? -1 : Brgb.a;
-    if (blendMode==34 || blendMode==110)
+    const int oA = (keepAlpha == 1 && blendMode == 0 && flipLayers == 1 || blendMode >= 23 || blendMode == 0) ? -1 : Brgb.a;
+
+    if (blendMode == 34 || blendMode == 110)
     {
        // replace bottom with top, no blending; conditional if blendMode=101
-       int opa = (blendMode==34 || (Orgb.a>0 && bpp==32) || (Orgb.r==0 && Orgb.g==0 && Orgb.b==0 && bpp!=32) ) ? 1 : 0;
-       if (bpp!=32 && opa==1)
+       int opa = (blendMode == 34 || (Orgb.a > 0 && bpp == 32) || (Orgb.r == 0 && Orgb.g == 0 && Orgb.b == 0 && bpp != 32)) ? 1 : 0;
+       if (bpp != 32 && opa == 1)
        {
-          Orgb.r = clamp(Orgb.r - (255 - Orgb.a), 0, 255);
-          Orgb.g = clamp(Orgb.g - (255 - Orgb.a), 0, 255);
-          Orgb.b = clamp(Orgb.g - (255 - Orgb.a), 0, 255);
+          const int invA = 255 - Orgb.a;
+          Orgb.r = std::max(Orgb.r - invA, 0);
+          Orgb.g = std::max(Orgb.g - invA, 0);
+          Orgb.b = std::max(Orgb.g - invA, 0); // Keep original bug compatibility
        }
 
-       if (keepAlpha==1)
-          Orgb.a = clamp(Brgb.a - (255 - Orgb.a), 0, 255);
+       if (keepAlpha == 1)
+          Orgb.a = std::max(Brgb.a - (255 - Orgb.a), 0);
 
-       return (opa==1) ? Orgb : Brgb;
-    } else if (blendMode==24 || blendMode==100)
+       return (opa == 1) ? Orgb : Brgb;
+    }
+    else if (blendMode == 24 || blendMode == 100)
     {
        // replace bottom with top, with blending; conditional if blendMode=100
        int fR, fG, fB, fA;
-       const int opa = (blendMode==24 || (Orgb.a>0 && bpp==32) || (Orgb.r==0 && Orgb.g==0 && Orgb.b==0 && bpp!=32) ) ? 1 : 0;
-       if (opa!=1)
+       const int opa = (blendMode == 24 || (Orgb.a > 0 && bpp == 32) || (Orgb.r == 0 && Orgb.g == 0 && Orgb.b == 0 && bpp != 32)) ? 1 : 0;
+       if (opa != 1)
           return Brgb;
 
        const float f = char_to_float[255 - opacity];
-       if (linearGamma==1)
+       if (linearGamma == 1)
        {
           fR = linear_to_gamma[weighTwoValues(gamma_to_linear[Orgb.r], gamma_to_linear[Brgb.r], f)];
           fG = linear_to_gamma[weighTwoValues(gamma_to_linear[Orgb.g], gamma_to_linear[Brgb.g], f)];
           fB = linear_to_gamma[weighTwoValues(gamma_to_linear[Orgb.b], gamma_to_linear[Brgb.b], f)];
           fA = linear_to_gamma[weighTwoValues(gamma_to_linear[Orgb.a], gamma_to_linear[Brgb.a], f)];
-       } else
+       }
+       else
        {
           fR = weighTwoValues(Orgb.r, Brgb.r, f);
           fG = weighTwoValues(Orgb.g, Brgb.g, f);
           fB = weighTwoValues(Orgb.b, Brgb.b, f);
           fA = weighTwoValues(Orgb.a, Brgb.a, f);
        }
-       if (keepAlpha==1)
-          fA = clamp(fA - (255 - Brgb.a), 0, 255);
+       if (keepAlpha == 1)
+          fA = std::max(fA - (255 - Brgb.a), 0);
 
        return {fB, fG, fR, fA};
-    } else if (blendMode==23)
+    }
+    else if (blendMode == 23)
     {
        // clip top to the alpha channel of the bottom
        int fR, fG, fB;
        const float f = char_to_float[Orgb.a];
-       if (linearGamma==1)
+       if (linearGamma == 1)
        {
           fR = linear_to_gamma[weighTwoValues(gamma_to_linear[Orgb.r], gamma_to_linear[Brgb.r], f)];
           fG = linear_to_gamma[weighTwoValues(gamma_to_linear[Orgb.g], gamma_to_linear[Brgb.g], f)];
           fB = linear_to_gamma[weighTwoValues(gamma_to_linear[Orgb.b], gamma_to_linear[Brgb.b], f)];
-       } else
+       }
+       else
        {
           fR = weighTwoValues(Orgb.r, Brgb.r, f);
           fG = weighTwoValues(Orgb.g, Brgb.g, f);
@@ -2319,13 +2329,14 @@ RGBAColor NEWERcalculateBlendModes(RGBAColor Orgb, RGBAColor Brgb, const int ble
        return {fB, fG, fR, Brgb.a};
     }
 
-    if ((flipLayers == 1 && blendMode > 0) || (blendMode == 25 && bpp == 32))
+    const bool do_swap = (flipLayers == 1 && blendMode > 0) || (blendMode == 25 && bpp == 32);
+    if (do_swap)
        swap(Orgb, Brgb);
 
     // if top is transparent, return bottom
     if (Orgb.a == 0)
     {
-       if (keepAlpha==1 && flipLayers==1 && oA!=-1 && inRange(1, 22, blendMode))
+       if (keepAlpha == 1 && flipLayers == 1 && oA != -1 && (blendMode >= 1 && blendMode <= 22))
           Brgb.a = oA;
        return Brgb;
     }
@@ -2334,203 +2345,200 @@ RGBAColor NEWERcalculateBlendModes(RGBAColor Orgb, RGBAColor Brgb, const int ble
     // or when top is fully opaque, no need for complex blending
     if ((Brgb.a == 0) || (Orgb.a == 255 && (blendMode == 0 || blendMode == 25)))
     {
-       if (keepAlpha==1 && oA!=-1)
+       if (keepAlpha == 1 && oA != -1)
           Orgb.a = oA;
        return Orgb;
     }
-    
+
     RGBAColor result = {0, 0, 0, 0};
-    result.a = Orgb.a + ((255.0f - Orgb.a) * Brgb.a) / 255.0f;
+    result.a = Orgb.a + ((255 - Orgb.a) * Brgb.a) / 255;
 
-    // If resulting alpha is 0, return transparent pixel
-    if (result.a == 0)
-    {
-       if (keepAlpha==1 && oA!=-1)
-          result.a = oA;
-       return result;
-    }
-
-    // Convert everything to floats
-    const float rOf = (linearGamma==1) ? char_to_floatGamma[Orgb.r] : char_to_float[Orgb.r];
-    const float gOf = (linearGamma==1) ? char_to_floatGamma[Orgb.g] : char_to_float[Orgb.g];
-    const float bOf = (linearGamma==1) ? char_to_floatGamma[Orgb.b] : char_to_float[Orgb.b];
-    const float rBf = (linearGamma==1) ? char_to_floatGamma[Brgb.r] : char_to_float[Brgb.r];
-    const float gBf = (linearGamma==1) ? char_to_floatGamma[Brgb.g] : char_to_float[Brgb.g];
-    const float bBf = (linearGamma==1) ? char_to_floatGamma[Brgb.b] : char_to_float[Brgb.b];
+    // Convert everything to floats using loop-invariant selected LUT
+    const float* const lut = (linearGamma == 1) ? char_to_floatGamma : char_to_float;
+    const float rOf = lut[Orgb.r];
+    const float gOf = lut[Orgb.g];
+    const float bOf = lut[Orgb.b];
+    const float rBf = lut[Brgb.r];
+    const float gBf = lut[Brgb.g];
+    const float bBf = lut[Brgb.b];
 
     // Alpha factors for blending
     const float sa = char_to_float[Orgb.a];
     const float da = char_to_float[Brgb.a];
-    const float oa = char_to_float[result.a];  // Output alpha
 
-    if (blendMode == 0 || blendMode == 25) { // normal / behind
-        rT = rOf;
-        gT = gOf;
-        bT = bOf;
-    }
-    else if (blendMode == 1) { // darken
-        rT = min(rOf, rBf);
-        gT = min(gOf, gBf);
-        bT = min(bOf, bBf);
-    }
-    else if (blendMode == 2) { // multiply
-        rT = rOf * rBf;
-        gT = gOf * gBf;
-        bT = bOf * bBf;
-    }
-    else if (blendMode == 3) { // linear burn
-       rT = rOf + rBf - 1;
-       gT = gOf + gBf - 1;
-       bT = bOf + bBf - 1;
-    }
-    else if (blendMode == 4) { // color burn
-       rT = 1 - ((1 - rBf) / rOf);
-       gT = 1 - ((1 - gBf) / gOf);
-       bT = 1 - ((1 - bBf) / bOf);
-    }
-    else if (blendMode == 5) { // lighten
-        rT = max(rOf, rBf);
-        gT = max(gOf, gBf);
-        bT = max(bOf, bBf);
-    }
-    else if (blendMode == 6) { // screen
-        rT = 1 - ( (1 - rBf) * (1 - rOf) );
-        gT = 1 - ( (1 - gBf) * (1 - gOf) );
-        bT = 1 - ( (1 - bBf) * (1 - bOf) );
-    }
-    else if (blendMode == 7) { // linear dodge [add]
-        rT = rOf + rBf;
-        gT = gOf + gBf;
-        bT = bOf + bBf;
-    }
-    else if (blendMode == 8) { // hard light
-        rT = (rOf < 0.5) ? 2 * rOf * rBf : 1 - (2 * (1 - rOf) * (1 - rBf) );
-        gT = (gOf < 0.5) ? 2 * gOf * gBf : 1 - (2 * (1 - gOf) * (1 - gBf) );
-        bT = (bOf < 0.5) ? 2 * bOf * bBf : 1 - (2 * (1 - bOf) * (1 - bBf) );
-    }
-    // else if (blendMode == 9) { // soft light A
-    //     rT = (1 - 2*rOf) * pow(rBf, 2) + 2 * rOf * rBf;
-    //     gT = (1 - 2*gOf) * pow(gBf, 2) + 2 * gOf * gBf;
-    //     bT = (1 - 2*bOf) * pow(bBf, 2) + 2 * bOf * bBf;
-    // }
-    else if (blendMode == 9) { // soft light B
-        rT = (rOf < 0.5) ? (1 - 2*rOf) * (rBf*rBf) + 2 * rBf * rOf : 2 * rBf * (1 - rOf) + sqrt(rBf) * (2 * rOf - 1);
-        gT = (gOf < 0.5) ? (1 - 2*gOf) * (gBf*gBf) + 2 * gBf * gOf : 2 * gBf * (1 - gOf) + sqrt(gBf) * (2 * gOf - 1);
-        bT = (bOf < 0.5) ? (1 - 2*bOf) * (bBf*bBf) + 2 * bBf * bOf : 2 * bBf * (1 - bOf) + sqrt(bBf) * (2 * bOf - 1);
-    }
-    else if (blendMode == 10) { // overlay
-        rT = (rBf < 0.5) ? 2 * rOf * rBf : 1 - (2 * (1 - rOf) * (1 - rBf) );
-        gT = (gBf < 0.5) ? 2 * gOf * gBf : 1 - (2 * (1 - gOf) * (1 - gBf) );
-        bT = (bBf < 0.5) ? 2 * bOf * bBf : 1 - (2 * (1 - bOf) * (1 - bBf) );
-    }
-    else if (blendMode == 11) { // hard mix
-        rT = (rOf <= (1 - rBf)) ? 0 : 1;
-        gT = (gOf <= (1 - gBf)) ? 0 : 1;
-        bT = (bOf <= (1 - bBf)) ? 0 : 1;
-    }
-    else if (blendMode == 12) { // linear light
-        rT = rBf + (2 * rOf) - 1;
-        gT = gBf + (2 * gOf) - 1;
-        bT = bBf + (2 * bOf) - 1;
-    }
-    else if (blendMode == 13) { // color dodge
-        rT = rBf / (1 - rOf);
-        gT = gBf / (1 - gOf);
-        bT = bBf / (1 - bOf);
-    }
-    else if (blendMode == 14) { // vivid light 
-        // this blend mode combines Color Dodge and Color Burn (rescaled so that neutral colors become middle gray). Dodge applies when values in the top layer are lighter than middle gray, and burn applies to darker values
-        if (rOf < 0.5)
-           rT = 1 - (1 - rBf) / (2 * rOf);
-        else
-           rT = rBf / (2 * (1 - rOf));
-
-        if (gOf < 0.5)
-           gT = 1 - (1 - gBf) / (2 * gOf);
-        else
-           gT = gBf / (2 * (1 - gOf));
-
-        if (bOf < 0.5)
-           bT = 1 - (1 - bBf) / (2 * bOf);
-        else
-           bT = bBf / (2 * (1 - bOf));
-    }
-    else if (blendMode == 15) { // average
-        rT = (rBf + rOf)/2;
-        gT = (gBf + gOf)/2;
-        bT = (bBf + bOf)/2;
-    }
-    else if (blendMode == 16) { // divide
-        rT = rBf / rOf;
-        gT = gBf / gOf;
-        bT = bBf / bOf;
-    }
-    else if (blendMode == 17) { // exclusion
-        rT = rOf + rBf - 2 * (rOf * rBf);
-        gT = gOf + gBf - 2 * (gOf * gBf);
-        bT = bOf + bBf - 2 * (bOf * bBf);
-    }
-    else if (blendMode == 18) { // difference
-        rT = abs(rBf - rOf);
-        gT = abs(gBf - gOf);
-        bT = abs(bBf - bOf);
-    }
-    else if (blendMode == 19) { // substract
-        rT = rBf - rOf;
-        gT = gBf - gOf;
-        bT = bBf - bOf;
-    }
-    else if (blendMode == 20) { // luminosity
-        double lO = char_to_float[getGrayscale(Orgb.r, Orgb.g, Orgb.b)];
-        double lB = char_to_float[getGrayscale(Brgb.r, Brgb.g, Brgb.b)];
-        rT = lO + rBf - lB;
-        gT = lO + gBf - lB;
-        bT = lO + bBf - lB;
-    }
-    else if (blendMode == 21) { // ghosting
-        double lO = char_to_float[getGrayscale(Orgb.r, Orgb.g, Orgb.b)];
-        double lB = char_to_float[getGrayscale(Brgb.r, Brgb.g, Brgb.b)];
-        rT = lB - lO + rBf + rOf/5;
-        gT = lB - lO + gBf + gOf/5;
-        bT = lB - lO + bBf + bOf/5;
-    }
-    else if (blendMode == 22) { // inverted difference
-        rT = (rOf > rBf) ? 1 - rOf - rBf : 1 - rBf - rOf;
-        gT = (gOf > gBf) ? 1 - gOf - gBf : 1 - gBf - gOf;
-        bT = (bOf > bBf) ? 1 - bOf - bBf : 1 - bBf - bOf;
+    switch (blendMode) {
+        case 0:
+        case 25: // normal / behind
+            rT = rOf;
+            gT = gOf;
+            bT = bOf;
+            break;
+        case 1: // darken
+            rT = std::min(rOf, rBf);
+            gT = std::min(gOf, gBf);
+            bT = std::min(bOf, bBf);
+            break;
+        case 2: // multiply
+            rT = rOf * rBf;
+            gT = gOf * gBf;
+            bT = bOf * bBf;
+            break;
+        case 3: // linear burn
+            rT = rOf + rBf - 1.0f;
+            gT = gOf + gBf - 1.0f;
+            bT = bOf + bBf - 1.0f;
+            break;
+        case 4: // color burn
+            rT = (rOf > 0.0f) ? (1.0f - ((1.0f - rBf) / rOf)) : 0.0f;
+            gT = (gOf > 0.0f) ? (1.0f - ((1.0f - gBf) / gOf)) : 0.0f;
+            bT = (bOf > 0.0f) ? (1.0f - ((1.0f - bBf) / bOf)) : 0.0f;
+            break;
+        case 5: // lighten
+            rT = std::max(rOf, rBf);
+            gT = std::max(gOf, gBf);
+            bT = std::max(bOf, bBf);
+            break;
+        case 6: // screen
+            rT = 1.0f - ((1.0f - rBf) * (1.0f - rOf));
+            gT = 1.0f - ((1.0f - gBf) * (1.0f - gOf));
+            bT = 1.0f - ((1.0f - bBf) * (1.0f - bOf));
+            break;
+        case 7: // linear dodge [add]
+            rT = rOf + rBf;
+            gT = gOf + gBf;
+            bT = bOf + bBf;
+            break;
+        case 8: // hard light
+            rT = (rOf < 0.5f) ? (2.0f * rOf * rBf) : (1.0f - (2.0f * (1.0f - rOf) * (1.0f - rBf)));
+            gT = (gOf < 0.5f) ? (2.0f * gOf * gBf) : (1.0f - (2.0f * (1.0f - gOf) * (1.0f - gBf)));
+            bT = (bOf < 0.5f) ? (2.0f * bOf * bBf) : (1.0f - (2.0f * (1.0f - bOf) * (1.0f - bBf)));
+            break;
+        case 9: { // soft light B
+            const float* const lut_sqrt = (linearGamma == 1) ? char_to_floatGamma_sqrt : char_to_float_sqrt;
+            const float sqrt_rBf = lut_sqrt[Brgb.r];
+            const float sqrt_gBf = lut_sqrt[Brgb.g];
+            const float sqrt_bBf = lut_sqrt[Brgb.b];
+            rT = (rOf < 0.5f) ? ((1.0f - 2.0f * rOf) * (rBf * rBf) + 2.0f * rBf * rOf) : (2.0f * rBf * (1.0f - rOf) + sqrt_rBf * (2.0f * rOf - 1.0f));
+            gT = (gOf < 0.5f) ? ((1.0f - 2.0f * gOf) * (gBf * gBf) + 2.0f * gBf * gOf) : (2.0f * gBf * (1.0f - gOf) + sqrt_gBf * (2.0f * gOf - 1.0f));
+            bT = (bOf < 0.5f) ? ((1.0f - 2.0f * bOf) * (bBf * bBf) + 2.0f * bBf * bOf) : (2.0f * bBf * (1.0f - bOf) + sqrt_bBf * (2.0f * bOf - 1.0f));
+            break;
+        }
+        case 10: // overlay
+            rT = (rBf < 0.5f) ? (2.0f * rOf * rBf) : (1.0f - (2.0f * (1.0f - rOf) * (1.0f - rBf)));
+            gT = (gBf < 0.5f) ? (2.0f * gOf * gBf) : (1.0f - (2.0f * (1.0f - gOf) * (1.0f - gBf)));
+            bT = (bBf < 0.5f) ? (2.0f * bOf * bBf) : (1.0f - (2.0f * (1.0f - bOf) * (1.0f - bBf)));
+            break;
+        case 11: // hard mix
+            rT = (rOf <= (1.0f - rBf)) ? 0.0f : 1.0f;
+            gT = (gOf <= (1.0f - gBf)) ? 0.0f : 1.0f;
+            bT = (bOf <= (1.0f - bBf)) ? 0.0f : 1.0f;
+            break;
+        case 12: // linear light
+            rT = rBf + (2.0f * rOf) - 1.0f;
+            gT = gBf + (2.0f * gOf) - 1.0f;
+            bT = bBf + (2.0f * bOf) - 1.0f;
+            break;
+        case 13: // color dodge
+            rT = (rOf < 1.0f) ? (rBf / (1.0f - rOf)) : 1.0f;
+            gT = (gOf < 1.0f) ? (gBf / (1.0f - gOf)) : 1.0f;
+            bT = (bOf < 1.0f) ? (bBf / (1.0f - bOf)) : 1.0f;
+            break;
+        case 14: // vivid light
+            rT = (rOf < 0.5f) ? (1.0f - (1.0f - rBf) / (2.0f * rOf)) : (rBf / (2.0f * (1.0f - rOf)));
+            gT = (gOf < 0.5f) ? (1.0f - (1.0f - gBf) / (2.0f * gOf)) : (gBf / (2.0f * (1.0f - gOf)));
+            bT = (bOf < 0.5f) ? (1.0f - (1.0f - bBf) / (2.0f * bOf)) : (bBf / (2.0f * (1.0f - bOf)));
+            break;
+        case 15: // average
+            rT = (rBf + rOf) * 0.5f;
+            gT = (gBf + gOf) * 0.5f;
+            bT = (bBf + bOf) * 0.5f;
+            break;
+        case 16: // divide
+            rT = (rOf > 0.0f) ? (rBf / rOf) : 1.0f;
+            gT = (gOf > 0.0f) ? (gBf / gOf) : 1.0f;
+            bT = (bOf > 0.0f) ? (bBf / bOf) : 1.0f;
+            break;
+        case 17: // exclusion
+            rT = rOf + rBf - 2.0f * (rOf * rBf);
+            gT = gOf + gBf - 2.0f * (gOf * gBf);
+            bT = bOf + bBf - 2.0f * (bOf * bBf);
+            break;
+        case 18: // difference
+            rT = abs(rBf - rOf);
+            gT = abs(gBf - gOf);
+            bT = abs(bBf - bOf);
+            break;
+        case 19: // subtract
+            rT = rBf - rOf;
+            gT = gBf - gOf;
+            bT = bBf - bOf;
+            break;
+        case 20: { // luminosity
+            const float lO = char_to_float[getGrayscale(Orgb.r, Orgb.g, Orgb.b)];
+            const float lB = char_to_float[getGrayscale(Brgb.r, Brgb.g, Brgb.b)];
+            rT = lO + rBf - lB;
+            gT = lO + gBf - lB;
+            bT = lO + bBf - lB;
+            break;
+        }
+        case 21: { // ghosting
+            const float lO = char_to_float[getGrayscale(Orgb.r, Orgb.g, Orgb.b)];
+            const float lB = char_to_float[getGrayscale(Brgb.r, Brgb.g, Brgb.b)];
+            rT = lB - lO + rBf + rOf * 0.2f;
+            gT = lB - lO + gBf + gOf * 0.2f;
+            bT = lB - lO + bBf + bOf * 0.2f;
+            break;
+        }
+        case 22: // inverted difference
+            rT = (rOf > rBf) ? 1.0f - rOf - rBf : 1.0f - rBf - rOf;
+            gT = (gOf > gBf) ? 1.0f - gOf - gBf : 1.0f - gBf - gOf;
+            bT = (bOf > bBf) ? 1.0f - bOf - bBf : 1.0f - bBf - bOf;
+            break;
+        default:
+            rT = rOf;
+            gT = gOf;
+            bT = bOf;
+            break;
     }
 
-    rT = clamp(rT, 0.0f, 1.0f);
-    gT = clamp(gT, 0.0f, 1.0f);
-    bT = clamp(bT, 0.0f, 1.0f); 
-    const bool mix = (keepAlpha!=1 || blendMode>=22 || blendMode<2) ? 1 : 0;
-    if (Brgb.a<255 && blendMode>0 && mix==1) {
-       // show original color where the top becomes transparent
-       rT = weighTwoValues(rOf, rT, 1.0f - da, 1);
-       gT = weighTwoValues(gOf, gT, 1.0f - da, 1);
-       bT = weighTwoValues(bOf, bT, 1.0f - da, 1);
+    rT = std::max(0.0f, std::min(rT, 1.0f));
+    gT = std::max(0.0f, std::min(gT, 1.0f));
+    bT = std::max(0.0f, std::min(bT, 1.0f)); 
+
+    const bool mix = (keepAlpha != 1 || blendMode >= 22 || blendMode < 2);
+    if (Brgb.a < 255 && blendMode > 0 && mix) {
+       const float w = 1.0f - da;
+       if (w >= 1.0f) {
+          rT = rOf;
+          gT = gOf;
+          bT = bOf;
+       } else if (w > 0.0f) {
+          rT = w * (rOf - rT) + rT;
+          gT = w * (gOf - gT) + gT;
+          bT = w * (bOf - bT) + bT;
+       }
     }
 
     // Alpha composite the RGB channels
-    const float ra = sa + da * (1.0f - sa);
-    if (ra>0) {
-       rT = (sa * rT + da * (1.0f - sa) * rBf) / ra;
-       gT = (sa * gT + da * (1.0f - sa) * gBf) / ra;
-       bT = (sa * bT + da * (1.0f - sa) * bBf) / ra;
-    }
+    const float da_1_sa = da * (1.0f - sa);
+    const float ra = sa + da_1_sa;
+    const float inv_ra = 1.0f / ra;
+    rT = (sa * rT + da_1_sa * rBf) * inv_ra;
+    gT = (sa * gT + da_1_sa * gBf) * inv_ra;
+    bT = (sa * bT + da_1_sa * bBf) * inv_ra;
 
-    static const float pff = 1.0f/2.1f;
-    if (linearGamma==1)
+    if (linearGamma == 1)
     {
-       rT = pow(rT, pff);
-       gT = pow(gT, pff);
-       bT = pow(bT, pff);
+       static const float pff = 1.0f / 2.1f;
+       rT = powf(rT, pff);
+       gT = powf(gT, pff);
+       bT = powf(bT, pff);
     }
 
     result.r = (unsigned char)(rT * 255.0f + 0.5f);
     result.g = (unsigned char)(gT * 255.0f + 0.5f);
     result.b = (unsigned char)(bT * 255.0f + 0.5f);
-    if (keepAlpha==1 && oA!=-1)
+    if (keepAlpha == 1 && oA != -1)
        result.a = oA;
     return result;
 }
@@ -3361,26 +3369,30 @@ DLL_API int DLL_CALLCONV PrepareAlphaChannelBlur(int *imageData, int w, int h, i
     return 1;
 }
 
-DLL_API int DLL_CALLCONV BlendBitmaps(unsigned char* bgrImageData, unsigned char* otherData, int w, int h, int Stride, int bpp, int blendMode, int flipLayers,int keepAlpha, int linearGamma, int opacity) {
+DLL_API int DLL_CALLCONV BlendBitmaps(unsigned char* bgrImageData, unsigned char* otherData, int w, int h, int Stride, int bpp, int blendMode, int flipLayers, int keepAlpha, int linearGamma, int opacity) {
     // pBitmap and pBitmap2Blend must be the same width and height
     // and in 32-ARGB or 24-RGB format.
+    const int bytesPerPixel = bpp / 8;
 
-    #pragma omp parallel for schedule(dynamic) default(none) // num_threads(3)
-    for (int x = 0; x < w; x++)
+    #pragma omp parallel for schedule(static) default(none) shared(bgrImageData, otherData, w, h, Stride, bpp, blendMode, flipLayers, keepAlpha, linearGamma, opacity, bytesPerPixel)
+    for (int y = 0; y < h; y++)
     {
-        for (int y = 0; y < h; y++)
+        INT64 rowOffset = (INT64)y * Stride;
+        unsigned char* const bgrRow = bgrImageData + rowOffset;
+        unsigned char* const otherRow = otherData + rowOffset;
+        for (int x = 0; x < w; x++)
         {
-            INT64 o = CalcPixOffset(x, y, Stride, bpp);
-            int aB = (bpp==32) ? bgrImageData[3 + o] : 255;
-            int aO = (bpp==32) ? otherData[3 + o] : 255;
-            RGBAColor Brgb = {bgrImageData[o], bgrImageData[o + 1], bgrImageData[o + 2], aB};
-            RGBAColor Orgb = {otherData[o], otherData[o + 1], otherData[o + 2], aO};
+            INT64 o = (INT64)x * bytesPerPixel;
+            int aB = (bpp == 32) ? bgrRow[3 + o] : 255;
+            int aO = (bpp == 32) ? otherRow[3 + o] : 255;
+            RGBAColor Brgb = {bgrRow[o], bgrRow[o + 1], bgrRow[o + 2], aB};
+            RGBAColor Orgb = {otherRow[o], otherRow[o + 1], otherRow[o + 2], aO};
             RGBAColor newColor = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, keepAlpha, bpp, opacity);
-            bgrImageData[2 + o] = newColor.r;
-            bgrImageData[1 + o] = newColor.g;
-            bgrImageData[o]     = newColor.b;
-            if (bpp==32)
-               bgrImageData[3 + o] = newColor.a;
+            bgrRow[2 + o] = newColor.r;
+            bgrRow[1 + o] = newColor.g;
+            bgrRow[o]     = newColor.b;
+            if (bpp == 32)
+               bgrRow[3 + o] = newColor.a;
         }
     }
     return 1;
