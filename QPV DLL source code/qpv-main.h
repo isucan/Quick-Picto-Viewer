@@ -636,6 +636,9 @@ struct RGBAColor {
             g = weighTwoValues(ng, g, fintensity);
             b = weighTwoValues(nb, b, fintensity);
         }
+    }
+};
+
 struct RGBA16color {
     int b, g, r, a;
 
