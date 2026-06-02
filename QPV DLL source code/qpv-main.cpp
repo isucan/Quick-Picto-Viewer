@@ -2262,12 +2262,12 @@ RGBAColor NEWERcalculateBlendModes(RGBAColor Orgb, RGBAColor Brgb, const int ble
     // TO-DO this function must supersede/replace calculateBlendModes() used by clrBrushMixColors()
     float rT, gT, bT;
     if (blendMode < 24)
-       Orgb.a = max(Orgb.a - opacity, 0);
+       Orgb.a = (Orgb.a * (255 - opacity)) / 255;
 
-    const int oA = (keepAlpha == 1 && blendMode == 0 && flipLayers == 1 || blendMode >= 23 || blendMode == 0) ? -1 : Brgb.a;
+    const int oA = (blendMode >= 23 || blendMode == 0) ? -1 : Brgb.a;
     if (blendMode == 34 || blendMode == 110)
     {
-       // replace bottom with top, no blending; conditional if blendMode=101
+       // replace bottom with top, no blending; conditional if blendMode=110
        int opa = (blendMode == 34 || (Orgb.a > 0 && bpp == 32) || (Orgb.r == 0 && Orgb.g == 0 && Orgb.b == 0 && bpp != 32)) ? 1 : 0;
        if (bpp != 32 && opa == 1)
        {
@@ -2445,9 +2445,9 @@ RGBAColor NEWERcalculateBlendModes(RGBAColor Orgb, RGBAColor Brgb, const int ble
             bT = (bOf < 1.0f) ? (bBf / (1.0f - bOf)) : 1.0f;
             break;
         case 14: // vivid light
-            rT = (rOf < 0.5f) ? (1.0f - (1.0f - rBf) / (2.0f * rOf)) : (rBf / (2.0f * (1.0f - rOf)));
-            gT = (gOf < 0.5f) ? (1.0f - (1.0f - gBf) / (2.0f * gOf)) : (gBf / (2.0f * (1.0f - gOf)));
-            bT = (bOf < 0.5f) ? (1.0f - (1.0f - bBf) / (2.0f * bOf)) : (bBf / (2.0f * (1.0f - bOf)));
+            rT = (rOf < 0.5f) ? ((rOf > 0.0f) ? (1.0f - (1.0f - rBf) / (2.0f * rOf)) : 0.0f) : ((rOf < 1.0f) ? (rBf / (2.0f * (1.0f - rOf))) : 1.0f);
+            gT = (gOf < 0.5f) ? ((gOf > 0.0f) ? (1.0f - (1.0f - gBf) / (2.0f * gOf)) : 0.0f) : ((gOf < 1.0f) ? (gBf / (2.0f * (1.0f - gOf))) : 1.0f);
+            bT = (bOf < 0.5f) ? ((bOf > 0.0f) ? (1.0f - (1.0f - bBf) / (2.0f * bOf)) : 0.0f) : ((bOf < 1.0f) ? (bBf / (2.0f * (1.0f - bOf))) : 1.0f);
             break;
         case 15: // average
             rT = (rBf + rOf) * 0.5f;
@@ -2491,9 +2491,9 @@ RGBAColor NEWERcalculateBlendModes(RGBAColor Orgb, RGBAColor Brgb, const int ble
             break;
         }
         case 22: // inverted difference
-            rT = (rOf > rBf) ? 1.0f - rOf - rBf : 1.0f - rBf - rOf;
-            gT = (gOf > gBf) ? 1.0f - gOf - gBf : 1.0f - gBf - gOf;
-            bT = (bOf > bBf) ? 1.0f - bOf - bBf : 1.0f - bBf - bOf;
+            rT = 1.0f - abs(rOf - rBf);
+            gT = 1.0f - abs(gOf - gBf);
+            bT = 1.0f - abs(bOf - bBf);
             break;
         default:
             rT = rOf;
