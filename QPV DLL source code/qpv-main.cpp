@@ -2265,7 +2265,6 @@ RGBAColor NEWERcalculateBlendModes(RGBAColor Orgb, RGBAColor Brgb, const int ble
        Orgb.a = max(Orgb.a - opacity, 0);
 
     const int oA = (keepAlpha == 1 && blendMode == 0 && flipLayers == 1 || blendMode >= 23 || blendMode == 0) ? -1 : Brgb.a;
-
     if (blendMode == 34 || blendMode == 110)
     {
        // replace bottom with top, no blending; conditional if blendMode=101
@@ -2298,8 +2297,7 @@ RGBAColor NEWERcalculateBlendModes(RGBAColor Orgb, RGBAColor Brgb, const int ble
           fG = linear_to_gamma[weighTwoValues(gamma_to_linear[Orgb.g], gamma_to_linear[Brgb.g], f)];
           fB = linear_to_gamma[weighTwoValues(gamma_to_linear[Orgb.b], gamma_to_linear[Brgb.b], f)];
           fA = linear_to_gamma[weighTwoValues(gamma_to_linear[Orgb.a], gamma_to_linear[Brgb.a], f)];
-       }
-       else
+       } else
        {
           fR = weighTwoValues(Orgb.r, Brgb.r, f);
           fG = weighTwoValues(Orgb.g, Brgb.g, f);
@@ -8260,9 +8258,6 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int brushG = (brushColor >> 8) & 0xFF;
     int brushB = brushColor & 0xFF;
 
-    if (brushType == 6 && softness < 40)
-       softness = 40;
-
     // Softness calculations
     double falloff = (100.0 - softness) / 100.0;
 
@@ -8295,11 +8290,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     float factorContrast = 0.0f;
     float fiContra = 0.0f;
     float saturateFactor = 0.0f;
-
     if (brushType == 5)
     {
         // Effects brush
-        // Prepare LUT tables as in AdjustImageColorsPrecise
+        // Prepare LUT tables as in AdjustImageColorsPrecise()
         if (brushBright < 0)
         {
             double zamma = 1.0f / ((float)(77069.0f - brushBright) / 77069.0f);
@@ -8422,6 +8416,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     double use_sinA = sinA;
     if (brushType == 7 || brushType == 8)
     {
+        // pinch and bulge brushes
         double max_rad = min(brushSize / 2.0, dest_radius);
         use_rx = max_rad;
         use_ry = max_rad;
@@ -8446,6 +8441,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int minY = min(startY, endY);
     int maxY = max(startY, endY);
     int totalStepsY = maxY - minY + 1;
+    blendMode = (brushType==2 || brushType==3 || brushType>=5) ? blendMode : 0;
+    flipLayers = (brushType==2 || brushType==3 || brushType>=5) ? flipLayers : 0;
 
     // Multi-threaded outer loop (100% thread-safe)
     #pragma omp parallel for schedule(dynamic)
@@ -8791,30 +8788,20 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                    srcA = 255;
             }
 
-            if ((brushType==2 || brushType==3 || brushType>=5) && blendMode>0)
-            {
-                RGBAColor Orgb = { srcB, srcG, srcR, srcA };
-                RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
-                int opa = clamp(255 - weightInt - opacity/5, 0, 255);
-                RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, opa);
-
-                srcR = blended.r;
-                srcG = blended.g;
-                srcB = blended.b;
-                srcA = blended.a;
-            }
-
-            outR = weighTwoValues(srcR, tgtR, weight);
-            outG = weighTwoValues(srcG, tgtG, weight);
-            outB = weighTwoValues(srcB, tgtB, weight);
-            if (bytesPerPixel == 4)
-               outA = weighTwoValues(srcA, tgtA, weight);
+            RGBAColor Orgb = { srcB, srcG, srcR, srcA };
+            RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
+            int opa = clamp(255 - weightInt - opacity/5, 0, 255);
+            RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, opa);
+            outR = blended.r;
+            outG = blended.g;
+            outB = blended.b;
+            outA = blended.a;
 
             // Write back to imgData
             targetPixel[0] = clamp(outB, 0, 255);
             targetPixel[1] = clamp(outG, 0, 255);
             targetPixel[2] = clamp(outR, 0, 255);
-            if (bytesPerPixel == 4)
+            if (bytesPerPixel==4)
                targetPixel[3] = clamp(outA, 0, 255);
         }
     }
