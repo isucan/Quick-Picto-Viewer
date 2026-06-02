@@ -155,8 +155,8 @@ DLL_API int DLL_CALLCONV initWICnow(UINT modus, int threadIDu) {
         char_to_grayBfloat[i] = i*0.114180f;
         char_to_int[i] = char_to_float[i] * 65535.0f;
         char_to_floatGamma[i] = pow(char_to_float[i], GAMMA);
-        char_to_float_sqrt[i] = sqrtf(char_to_float[i]);
-        char_to_floatGamma_sqrt[i] = sqrtf(char_to_floatGamma[i]);
+        char_to_float_sqrt[i] = sqrt(char_to_float[i]);
+        char_to_floatGamma_sqrt[i] = sqrt(char_to_floatGamma[i]);
     }
 
     for (int i = 0; i < 65536; i++) {
@@ -2259,7 +2259,7 @@ RGBAColor NEWERcalculateBlendModes(RGBAColor Orgb, RGBAColor Brgb, const int ble
     // TO-DO this function must supersede/replace calculateBlendModes() used by clrBrushMixColors()
     float rT, gT, bT;
     if (blendMode < 24)
-       Orgb.a = std::max(Orgb.a - opacity, 0);
+       Orgb.a = max(Orgb.a - opacity, 0);
 
     const int oA = (keepAlpha == 1 && blendMode == 0 && flipLayers == 1 || blendMode >= 23 || blendMode == 0) ? -1 : Brgb.a;
 
@@ -2270,20 +2270,20 @@ RGBAColor NEWERcalculateBlendModes(RGBAColor Orgb, RGBAColor Brgb, const int ble
        if (bpp != 32 && opa == 1)
        {
           const int invA = 255 - Orgb.a;
-          Orgb.r = std::max(Orgb.r - invA, 0);
-          Orgb.g = std::max(Orgb.g - invA, 0);
-          Orgb.b = std::max(Orgb.g - invA, 0); // Keep original bug compatibility
+          Orgb.r = max(Orgb.r - invA, 0);
+          Orgb.g = max(Orgb.g - invA, 0);
+          Orgb.b = max(Orgb.g - invA, 0); // Keep original bug compatibility
        }
 
        if (keepAlpha == 1)
-          Orgb.a = std::max(Brgb.a - (255 - Orgb.a), 0);
+          Orgb.a = max(Brgb.a - (255 - Orgb.a), 0);
 
        return (opa == 1) ? Orgb : Brgb;
     }
     else if (blendMode == 24 || blendMode == 100)
     {
        // replace bottom with top, with blending; conditional if blendMode=100
-       int fR, fG, fB, fA;
+       int fB, fG, fR, fA;
        const int opa = (blendMode == 24 || (Orgb.a > 0 && bpp == 32) || (Orgb.r == 0 && Orgb.g == 0 && Orgb.b == 0 && bpp != 32)) ? 1 : 0;
        if (opa != 1)
           return Brgb;
@@ -2304,14 +2304,14 @@ RGBAColor NEWERcalculateBlendModes(RGBAColor Orgb, RGBAColor Brgb, const int ble
           fA = weighTwoValues(Orgb.a, Brgb.a, f);
        }
        if (keepAlpha == 1)
-          fA = std::max(fA - (255 - Brgb.a), 0);
+          fA = max(fA - (255 - Brgb.a), 0);
 
        return {fB, fG, fR, fA};
     }
     else if (blendMode == 23)
     {
        // clip top to the alpha channel of the bottom
-       int fR, fG, fB;
+       int fB, fG, fR;
        const float f = char_to_float[Orgb.a];
        if (linearGamma == 1)
        {
@@ -2374,9 +2374,9 @@ RGBAColor NEWERcalculateBlendModes(RGBAColor Orgb, RGBAColor Brgb, const int ble
             bT = bOf;
             break;
         case 1: // darken
-            rT = std::min(rOf, rBf);
-            gT = std::min(gOf, gBf);
-            bT = std::min(bOf, bBf);
+            rT = min(rOf, rBf);
+            gT = min(gOf, gBf);
+            bT = min(bOf, bBf);
             break;
         case 2: // multiply
             rT = rOf * rBf;
@@ -2394,9 +2394,9 @@ RGBAColor NEWERcalculateBlendModes(RGBAColor Orgb, RGBAColor Brgb, const int ble
             bT = (bOf > 0.0f) ? (1.0f - ((1.0f - bBf) / bOf)) : 0.0f;
             break;
         case 5: // lighten
-            rT = std::max(rOf, rBf);
-            gT = std::max(gOf, gBf);
-            bT = std::max(bOf, bBf);
+            rT = max(rOf, rBf);
+            gT = max(gOf, gBf);
+            bT = max(bOf, bBf);
             break;
         case 6: // screen
             rT = 1.0f - ((1.0f - rBf) * (1.0f - rOf));
@@ -2501,9 +2501,9 @@ RGBAColor NEWERcalculateBlendModes(RGBAColor Orgb, RGBAColor Brgb, const int ble
             break;
     }
 
-    rT = std::max(0.0f, std::min(rT, 1.0f));
-    gT = std::max(0.0f, std::min(gT, 1.0f));
-    bT = std::max(0.0f, std::min(bT, 1.0f)); 
+    rT = clamp(rT, 0.0f, 1.0f);
+    gT = clamp(gT, 0.0f, 1.0f);
+    bT = clamp(bT, 0.0f, 1.0f); 
 
     const bool mix = (keepAlpha != 1 || blendMode >= 22 || blendMode < 2);
     if (Brgb.a < 255 && blendMode > 0 && mix) {
@@ -2530,9 +2530,9 @@ RGBAColor NEWERcalculateBlendModes(RGBAColor Orgb, RGBAColor Brgb, const int ble
     if (linearGamma == 1)
     {
        static const float pff = 1.0f / 2.1f;
-       rT = powf(rT, pff);
-       gT = powf(gT, pff);
-       bT = powf(bT, pff);
+       rT = pow(rT, pff);
+       gT = pow(gT, pff);
+       bT = pow(bT, pff);
     }
 
     result.r = (unsigned char)(rT * 255.0f + 0.5f);
@@ -3369,30 +3369,26 @@ DLL_API int DLL_CALLCONV PrepareAlphaChannelBlur(int *imageData, int w, int h, i
     return 1;
 }
 
-DLL_API int DLL_CALLCONV BlendBitmaps(unsigned char* bgrImageData, unsigned char* otherData, int w, int h, int Stride, int bpp, int blendMode, int flipLayers, int keepAlpha, int linearGamma, int opacity) {
+DLL_API int DLL_CALLCONV BlendBitmaps(unsigned char* bgrImageData, unsigned char* otherData, int w, int h, int Stride, int bpp, int blendMode, int flipLayers,int keepAlpha, int linearGamma, int opacity) {
     // pBitmap and pBitmap2Blend must be the same width and height
     // and in 32-ARGB or 24-RGB format.
-    const int bytesPerPixel = bpp / 8;
 
-    #pragma omp parallel for schedule(static) default(none) shared(bgrImageData, otherData, w, h, Stride, bpp, blendMode, flipLayers, keepAlpha, linearGamma, opacity, bytesPerPixel)
-    for (int y = 0; y < h; y++)
+    #pragma omp parallel for schedule(dynamic) default(none) // num_threads(3)
+    for (int x = 0; x < w; x++)
     {
-        INT64 rowOffset = (INT64)y * Stride;
-        unsigned char* const bgrRow = bgrImageData + rowOffset;
-        unsigned char* const otherRow = otherData + rowOffset;
-        for (int x = 0; x < w; x++)
+        for (int y = 0; y < h; y++)
         {
-            INT64 o = (INT64)x * bytesPerPixel;
-            int aB = (bpp == 32) ? bgrRow[3 + o] : 255;
-            int aO = (bpp == 32) ? otherRow[3 + o] : 255;
-            RGBAColor Brgb = {bgrRow[o], bgrRow[o + 1], bgrRow[o + 2], aB};
-            RGBAColor Orgb = {otherRow[o], otherRow[o + 1], otherRow[o + 2], aO};
+            INT64 o = CalcPixOffset(x, y, Stride, bpp);
+            int aB = (bpp==32) ? bgrImageData[3 + o] : 255;
+            int aO = (bpp==32) ? otherData[3 + o] : 255;
+            RGBAColor Brgb = {bgrImageData[o], bgrImageData[o + 1], bgrImageData[o + 2], aB};
+            RGBAColor Orgb = {otherData[o], otherData[o + 1], otherData[o + 2], aO};
             RGBAColor newColor = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, keepAlpha, bpp, opacity);
-            bgrRow[2 + o] = newColor.r;
-            bgrRow[1 + o] = newColor.g;
-            bgrRow[o]     = newColor.b;
-            if (bpp == 32)
-               bgrRow[3 + o] = newColor.a;
+            bgrImageData[2 + o] = newColor.r;
+            bgrImageData[1 + o] = newColor.g;
+            bgrImageData[o]     = newColor.b;
+            if (bpp==32)
+               bgrImageData[3 + o] = newColor.a;
         }
     }
     return 1;
