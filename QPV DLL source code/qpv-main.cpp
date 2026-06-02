@@ -8790,7 +8790,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
 
             RGBAColor Orgb = { srcB, srcG, srcR, srcA };
             RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
-            int opa = clamp(255 - weightInt - opacity/5, 0, 255);
+            int opa = clamp(255 - weightInt, 0, 255);
             RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, opa);
             outR = blended.r;
             outG = blended.g;
