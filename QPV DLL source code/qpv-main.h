@@ -215,65 +215,68 @@ struct HSLColor {
     }
 
     RGBColorI ConvertHSLtoRGB() {
-        double fH = h / 360.0;
-        double var_1, var_2;
-        RGBColorI newColor;
-        if (s <= 0.0)
-        {
-            newColor.r = clamp((float)(l * 255.0), 0.0f, 255.0f);
-            newColor.g = clamp((float)(l * 255.0), 0.0f, 255.0f);
-            newColor.b = clamp((float)(l * 255.0), 0.0f, 255.0f);
-        } else
-        {
-            if (l < 0.5)
-                var_2 = l * (1.0 + s);
-            else
-                var_2 = (l + s) - (s * l);
+    // http://www.had2know.com/technology/hsl-rgb-color-converter.html
 
-            var_1 = 2.0 * l - var_2;
-            newColor.r = clamp((float)(255.0 * ConvertHueToRGB(var_1, var_2, fH + div1s3)), 0.0f, 255.0f);
-            newColor.g = clamp((float)(255.0 * ConvertHueToRGB(var_1, var_2, fH)), 0.0f, 255.0f);
-            newColor.b = clamp((float)(255.0 * ConvertHueToRGB(var_1, var_2, fH - div1s3)), 0.0f, 255.0f);
-        }
-        return newColor;
-    }
+       double fH = h/360.0f;
+       double var_1, var_2;
+       RGBColorI newColor;
+       if (s <= 0.0)
+       {
+          newColor.r = clamp((float)l*255.0f, 0.0f, 255.0f);
+          newColor.g = clamp((float)l*255.0f, 0.0f, 255.0f);
+          newColor.b = clamp((float)l*255.0f, 0.0f, 255.0f);
+       } else
+       {
+          if (l < 0.5)
+             var_2 = l * (1.0f + s);
+          else
+             var_2 = (l + s) - (s * l);
+
+          var_1 = 2.0f * l - var_2;
+          newColor.r = clamp((float)(255.0f * ConvertHueToRGB(var_1, var_2, fH + div1s3) ), 0.0f, 255.0f);
+          newColor.g = clamp((float)(255.0f * ConvertHueToRGB(var_1, var_2, fH) ), 0.0f, 255.0f);
+          newColor.b = clamp((float)(255.0f * ConvertHueToRGB(var_1, var_2, fH - div1s3) ), 0.0f, 255.0f);
+       }
+       return newColor;
+    };
 
     RGBColorI ConvertHSLtoRGBint16() {
-        const double fH = h / 360.0;
-        double var_1, var_2;
-        RGBColorI newColor;
-        if (s <= 0.0)
-        {
-            newColor.r = clamp((float)(l * 65535.0), 0.0f, 65535.0f);
-            newColor.g = clamp((float)(l * 65535.0), 0.0f, 65535.0f);
-            newColor.b = clamp((float)(l * 65535.0), 0.0f, 65535.0f);
-        } else
-        {
-            if (l < 0.5)
-                var_2 = l * (1.0 + s);
-            else
-                var_2 = (l + s) - (s * l);
+    // http://www.had2know.com/technology/hsl-rgb-color-converter.html
 
-            var_1 = 2.0 * l - var_2;
-            newColor.r = clamp((float)(65535.0 * ConvertHueToRGB(var_1, var_2, fH + div1s3)), 0.0f, 65535.0f);
-            newColor.g = clamp((float)(65535.0 * ConvertHueToRGB(var_1, var_2, fH)), 0.0f, 65535.0f);
-            newColor.b = clamp((float)(65535.0 * ConvertHueToRGB(var_1, var_2, fH - div1s3)), 0.0f, 65535.0f);
-        }
-        return newColor;
-    }
-};
+       const double fH = h/360.0f;
+       double var_1, var_2;
+       RGBColorI newColor;
+       if (s <= 0)
+       {
+          newColor.r = clamp((float)l*65535.0f, 0.0f, 65535.0f);
+          newColor.g = clamp((float)l*65535.0f, 0.0f, 65535.0f);
+          newColor.b = clamp((float)l*65535.0f, 0.0f, 65535.0f);
+       } else
+       {
+          if (l < 0.5)
+             var_2 = l * (1.0f + s);
+          else
+             var_2 = (l + s) - (s * l);
+
+          var_1 = 2.0f * l - var_2;
+          newColor.r = clamp((float)(65535.0f * ConvertHueToRGB(var_1, var_2, fH + div1s3) ), 0.0f, 65535.0f);
+          newColor.g = clamp((float)(65535.0f * ConvertHueToRGB(var_1, var_2, fH) ), 0.0f, 65535.0f);
+          newColor.b = clamp((float)(65535.0f * ConvertHueToRGB(var_1, var_2, fH - div1s3) ), 0.0f, 65535.0f);
+       }
+       return newColor;
+    };
+  };
 
 struct RGBAColor {
     int b, g, r, a;
-
     HSLColor ConvertRGBtoHSL() {
-        const double rf = clamp(r, 0, 255) / 255.0;
-        const double gf = clamp(g, 0, 255) / 255.0;
-        const double bf = clamp(b, 0, 255) / 255.0;
-        const double minu    = min(rf, min(gf, bf));
-        const double maxu    = max(rf, max(gf, bf));
-        const double del_Max = maxu - minu;
-        const double L       = (maxu + minu) / 2.0;
+       const double rf = char_to_float[r];
+       const double gf = char_to_float[g];
+       const double bf = char_to_float[b];
+       const double minu    = min(rf, min(gf, bf));
+       const double maxu    = max(rf, max(gf, bf));
+       const double del_Max = maxu - minu;
+       const double L       = (maxu + minu) / 2.0f;
         double H = 0.0, S = 0.0;
 
         if (del_Max > 0.0)
@@ -311,25 +314,37 @@ struct RGBAColor {
     }
 
     void threshold(int ao, int ro, int go, int bo, int seeThrough) {
-        if (seeThrough == 2)
+        if (seeThrough==2)
         {
-            if (ao >= 0) a = (a > ao) ? a : 0;
-            if (ro >= 0) r = (r > ro) ? r : 0;
-            if (go >= 0) g = (g > go) ? g : 0;
-            if (bo >= 0) b = (b > bo) ? b : 0;
-        } else if (seeThrough == 3)
-        {
-            if (ao >= 0) a = (a > ao) ? 255 : a;
-            if (ro >= 0) r = (r > ro) ? 255 : r;
-            if (go >= 0) g = (g > go) ? 255 : g;
-            if (bo >= 0) b = (b > bo) ? 255 : b;
-        } else
-        {
-            if (ao >= 0) a = (a > ao) ? 255 : 0;
-            if (ro >= 0) r = (r > ro) ? 255 : 0;
-            if (go >= 0) g = (g > go) ? 255 : 0;
-            if (bo >= 0) b = (b > bo) ? 255 : 0;
-        }
+           if (ao>=0)
+              a = (a>ao) ? a : 0;
+           if (ro>=0)
+              r = (r>ro) ? r : 0;
+           if (go>=0)
+              g = (g>go) ? g : 0;
+           if (bo>=0)
+              b = (b>bo) ? b : 0;
+       } else if (seeThrough==3)
+       {
+          if (ao>=0)
+             a = (a>ao) ? 255 : a;
+          if (ro>=0)
+             r = (r>ro) ? 255 : r;
+          if (go>=0)
+             g = (g>go) ? 255 : g;
+          if (bo>=0)
+             b = (b>bo) ? 255 : b;
+      } else
+      {
+         if (ao>=0)
+            a = (a>ao) ? 255 : 0;
+         if (ro>=0)
+            r = (r>ro) ? 255 : 0;
+         if (go>=0)
+            g = (g>go) ? 255 : 0;
+         if (bo>=0)
+            b = (b>bo) ? 255 : 0;
+      }
     }
 
     void invert() {
@@ -363,169 +378,169 @@ struct RGBAColor {
     }
 
     void brightness(int level, int altMode) {
-        if (altMode == 0)
+        if (altMode==0)
         {
-            if (level < 0)
-            {
-                r = LUTgammaBright[clamp(r, 0, 255)];
-                g = LUTgammaBright[clamp(g, 0, 255)];
-                b = LUTgammaBright[clamp(b, 0, 255)];
-            }
-            r = clamp(r + level, 0, 255);
-            g = clamp(g + level, 0, 255);
-            b = clamp(b + level, 0, 255);
-        } else
-        {
-            r = LUTbright[clamp(r, 0, 255)];
-            g = LUTbright[clamp(g, 0, 255)];
-            b = LUTbright[clamp(b, 0, 255)];
-        }
+           if (level<0)
+           {
+              r = LUTgammaBright[r];
+              g = LUTgammaBright[g];
+              b = LUTgammaBright[b];
+           }
+           r = clamp(r + level, 0, 255);
+           g = clamp(g + level, 0, 255);
+           b = clamp(b + level, 0, 255);
+       } else
+       {
+           r = LUTbright[r];
+           g = LUTbright[g];
+           b = LUTbright[b];
+       }
     }
 
     void shadows(int altMode, int linearGamma, int gray) {
-        int nr, ng, nb;
-        if (altMode == 1)
-            gray = clamp(255 - gray, 0, 255);
-        else
-            gray = clamp(255 - (gray * 2), 0, 255);
+       int nr, ng, nb;
+       if (altMode==1)
+          gray = clamp(255 - gray, 0, 255);
+       else
+          gray = clamp(255 - (gray*2), 0, 255);
 
-        nr = LUTshadows[clamp(r, 0, 255)];
-        ng = LUTshadows[clamp(g, 0, 255)];
-        nb = LUTshadows[clamp(b, 0, 255)];
-        float fintensity = clamp(gray, 0, 255) / 255.0f;
-        if (linearGamma == 1)
-        {
-            fintensity += 0.1f;
-            r = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(nr, 0, 255)], gamma_to_linear[clamp(r, 0, 255)], fintensity), 0, 32768)];
-            g = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(ng, 0, 255)], gamma_to_linear[clamp(g, 0, 255)], fintensity), 0, 32768)];
-            b = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(nb, 0, 255)], gamma_to_linear[clamp(b, 0, 255)], fintensity), 0, 32768)];
-        } else
-        {
-            r = weighTwoValues(nr, r, fintensity);
-            g = weighTwoValues(ng, g, fintensity);
-            b = weighTwoValues(nb, b, fintensity);
-        }
+       nr = LUTshadows[r];
+       ng = LUTshadows[g];
+       nb = LUTshadows[b];
+       float fintensity = char_to_float[gray];
+       if (linearGamma==1)
+       {
+          fintensity += 0.1;
+          r = linear_to_gamma[weighTwoValues(gamma_to_linear[nr], gamma_to_linear[r], fintensity)];
+          g = linear_to_gamma[weighTwoValues(gamma_to_linear[ng], gamma_to_linear[g], fintensity)];
+          b = linear_to_gamma[weighTwoValues(gamma_to_linear[nb], gamma_to_linear[b], fintensity)];
+       } else
+       {
+          r = weighTwoValues(nr, r, fintensity);
+          g = weighTwoValues(ng, g, fintensity);
+          b = weighTwoValues(nb, b, fintensity);
+       }
     }
 
     void highlights(int altMode, int linearGamma, float factor, int gray) {
-        int nr, ng, nb;
-        if (altMode == 1)
-            gray = contraMaths(gray * 1.5f, factor, 128);
-        else
-            gray = contraMaths(gray, factor, 128);
+       int nr, ng, nb;
+       if (altMode==1)
+          gray = contraMaths(gray*1.5f, factor, 128);
+       else
+          gray = contraMaths(gray, factor, 128);
 
-        nr = LUThighs[clamp(r, 0, 255)];
-        ng = LUThighs[clamp(g, 0, 255)];
-        nb = LUThighs[clamp(b, 0, 255)];
-        float fintensity = clamp(gray, 0, 255) / 255.0f;
-        if (linearGamma == 1)
-        {
-            r = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(nr, 0, 255)], gamma_to_linear[clamp(r, 0, 255)], fintensity), 0, 32768)];
-            g = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(ng, 0, 255)], gamma_to_linear[clamp(g, 0, 255)], fintensity), 0, 32768)];
-            b = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(nb, 0, 255)], gamma_to_linear[clamp(b, 0, 255)], fintensity), 0, 32768)];
-        } else
-        {
-            r = weighTwoValues(nr, r, fintensity);
-            g = weighTwoValues(ng, g, fintensity);
-            b = weighTwoValues(nb, b, fintensity);
-        }
+       nr = LUThighs[r];
+       ng = LUThighs[g];
+       nb = LUThighs[b];
+       float fintensity = char_to_float[gray];
+       if (linearGamma==1)
+       {
+          r = linear_to_gamma[weighTwoValues(gamma_to_linear[nr], gamma_to_linear[r], fintensity)];
+          g = linear_to_gamma[weighTwoValues(gamma_to_linear[ng], gamma_to_linear[g], fintensity)];
+          b = linear_to_gamma[weighTwoValues(gamma_to_linear[nb], gamma_to_linear[b], fintensity)];
+       } else
+       {
+          r = weighTwoValues(nr, r, fintensity);
+          g = weighTwoValues(ng, g, fintensity);
+          b = weighTwoValues(nb, b, fintensity);
+       }
     }
 
     void gamma() {
-        r = LUTgamma[clamp(r, 0, 255)];
-        g = LUTgamma[clamp(g, 0, 255)];
-        b = LUTgamma[clamp(b, 0, 255)];
+        r = LUTgamma[r];
+        g = LUTgamma[g];
+        b = LUTgamma[b];
     }
 
     void contrast(int level, int altContra, int linearGamma, float fintensity) {
-        if (altContra == 1)
+        if (altContra==1)
         {
-            a = LUTcontra[clamp(a, 0, 255)];
-            return;
+           a = LUTcontra[a];
+           return;
         }
 
-        if (level > 0)
+        if (level>0)
         {
-            int gray = getGrayscale(r, g, b);
-            if (linearGamma == 1)
-            {
-                r = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(gray, 0, 255)], gamma_to_linear[clamp(r, 0, 255)], fintensity), 0, 32768)];
-                g = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(gray, 0, 255)], gamma_to_linear[clamp(g, 0, 255)], fintensity), 0, 32768)];
-                b = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(gray, 0, 255)], gamma_to_linear[clamp(b, 0, 255)], fintensity), 0, 32768)];
-            } else
-            {
-                r = weighTwoValues(gray, r, fintensity);
-                g = weighTwoValues(gray, g, fintensity);
-                b = weighTwoValues(gray, b, fintensity);
-            }
+           int gray = getGrayscale(r, g, b);
+           if (linearGamma==1)
+           {
+              r = linear_to_gamma[weighTwoValues(gamma_to_linear[gray], gamma_to_linear[r], fintensity)];
+              g = linear_to_gamma[weighTwoValues(gamma_to_linear[gray], gamma_to_linear[g], fintensity)];
+              b = linear_to_gamma[weighTwoValues(gamma_to_linear[gray], gamma_to_linear[b], fintensity)];
+           } else
+           {
+              r = weighTwoValues(gray, r, fintensity);
+              g = weighTwoValues(gray, g, fintensity);
+              b = weighTwoValues(gray, b, fintensity);
+           }
         }
 
-        r = LUTcontra[clamp(r, 0, 255)];
-        g = LUTcontra[clamp(g, 0, 255)];
-        b = LUTcontra[clamp(b, 0, 255)];
+        r = LUTcontra[r];
+        g = LUTcontra[g];
+        b = LUTcontra[b];
     }
 
     void saturation(int level, int altMode, int linearGamma, float saturation) {
-        if (altMode > 1)
+        if (altMode>1)
         {
-            int gray = (altMode == 2) ? r : g;
-            if (altMode == 3)
-                gray = b;
-            r = gray;
-            g = gray;
-            b = gray;
-        } else if (altMode == 1)
+           int gray = (altMode==2) ? r : g;
+           if (altMode==3)
+              gray = b;
+           r = gray;
+           g = gray;
+           b = gray;
+        } else if (altMode==1)
         {
             HSLColor HSLu = ConvertRGBtoHSL();
-            saturation = (level < 0) ? 0.001f : saturation;
+            saturation = (level<0) ? 0.001f : saturation;
             HSLColor newHSL = {HSLu.h, saturation, HSLu.l};
             RGBColorI newRGB = newHSL.ConvertHSLtoRGB();
             float fi = 0.0f;
             if (inRange(0, 16384, level))
-                fi = level / 16384.0f;
+               fi = level/16384.0f;
             else if (inRange(-65535, 0, level))
-                fi = abs(level) / 65535.0f;
+               fi = abs(level)/65535.0f;
 
             if (inRange(-65535, 16384, level))
             {
-                r = weighTwoValues(newRGB.r, r, fi);
-                g = weighTwoValues(newRGB.g, g, fi);
-                b = weighTwoValues(newRGB.b, b, fi);
+               r = weighTwoValues(newRGB.r, r, fi);
+               g = weighTwoValues(newRGB.g, g, fi);
+               b = weighTwoValues(newRGB.b, b, fi);
             } else
             {
-                r = newRGB.r;
-                g = newRGB.g;
-                b = newRGB.b;
+               r = newRGB.r;
+               g = newRGB.g;
+               b = newRGB.b;
             }
-        } else if (level < 0)
+        } else if (level<0)
         {
-            const int gray = getGrayscale(r, g, b);
-            float fintensity = clamp(abs(level), 0, 65535) / 65535.0f;
-            if (linearGamma == 1)
-            {
-                r = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(gray, 0, 255)], gamma_to_linear[clamp(r, 0, 255)], fintensity), 0, 32768)];
-                g = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(gray, 0, 255)], gamma_to_linear[clamp(g, 0, 255)], fintensity), 0, 32768)];
-                b = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(gray, 0, 255)], gamma_to_linear[clamp(b, 0, 255)], fintensity), 0, 32768)];
-            } else
-            {
-                r = weighTwoValues(gray, r, fintensity);
-                g = weighTwoValues(gray, g, fintensity);
-                b = weighTwoValues(gray, b, fintensity);
-            }
+           const int gray = getGrayscale(r, g, b);
+           float fintensity = int_to_float[abs(level)];
+           if (linearGamma==1)
+           {
+              r = linear_to_gamma[weighTwoValues(gamma_to_linear[gray], gamma_to_linear[r], fintensity)];
+              g = linear_to_gamma[weighTwoValues(gamma_to_linear[gray], gamma_to_linear[g], fintensity)];
+              b = linear_to_gamma[weighTwoValues(gamma_to_linear[gray], gamma_to_linear[b], fintensity)];
+           } else
+           {
+              r = weighTwoValues(gray, r, fintensity);
+              g = weighTwoValues(gray, g, fintensity);
+              b = weighTwoValues(gray, b, fintensity);
+           }
         } else
         {
-            const float max_val = max(max(r, g), b);
-            const float min_val = min(min(r, g), b);
-            const float luxAvg = (max_val + min_val) / 2.0f;
-            const float factor = (level + 21823) / 21823.0f;
+           const float max_val = max(max(r, g), b);
+           const float min_val = min(min(r, g), b);
+           const float luxAvg = (max_val + min_val) / 2.0f;
+           const float factor = (level + 21823)/21823.0f;
 
-            float lux = clamp(getGrayscale(r, g, b) / 3.0f, 0.0f, 255.0f);
-            lux = weighTwoValues(lux, 0.0f, clamp(level, 0, 65535) / 65535.0f);
+           float lux = clamp(getGrayscale(r, g, b)/3.0f, 0.0f, 255.0f);
+           lux = weighTwoValues(lux, 0.0f, int_to_float[level]);;
 
-            r = clamp((int)round(factor * ((float)r - luxAvg) + luxAvg + lux), 0, 255);
-            g = clamp((int)round(factor * ((float)g - luxAvg) + luxAvg + lux), 0, 255);
-            b = clamp((int)round(factor * ((float)b - luxAvg) + luxAvg + lux), 0, 255);
-        }
+           r = clamp(round(factor * ((float)r - luxAvg) + luxAvg + lux), 0.0f, 255.0f);
+           g = clamp(round(factor * ((float)g - luxAvg) + luxAvg + lux), 0.0f, 255.0f);
+           b = clamp(round(factor * ((float)b - luxAvg) + luxAvg + lux), 0.0f, 255.0f);
+        };
     }
 
     void hueRotate(int degrees, float saturation, int altMode, int level) {
@@ -538,47 +553,47 @@ struct RGBAColor {
         RGBColorI newRGB = newHSL.ConvertHSLtoRGB();
         float fi = 0.0f;
         if (inRange(0, 15, degrees))
-            fi = degrees / 15.0f;
+           fi = degrees/15.0f;
         else if (inRange(-15, 0, degrees))
-            fi = abs(degrees) / 15.0f;
+           fi = abs(degrees)/15.0f;
 
         if (inRange(-15, 15, degrees))
         {
-            r = weighTwoValues(newRGB.r, r, fi);
-            g = weighTwoValues(newRGB.g, g, fi);
-            b = weighTwoValues(newRGB.b, b, fi);
+           r = weighTwoValues(newRGB.r, r, fi);
+           g = weighTwoValues(newRGB.g, g, fi);
+           b = weighTwoValues(newRGB.b, b, fi);
         } else
         {
-            r = newRGB.r;
-            g = newRGB.g;
-            b = newRGB.b;
+           r = newRGB.r;
+           g = newRGB.g;
+           b = newRGB.b;
         }
     }
 
     void tinto(int degrees, int level, int linearGamma) {
         HSLColor HSLu = ConvertRGBtoHSL();
-        HSLColor newHSL = {(double)degrees, 0.5, HSLu.l};
+        HSLColor newHSL = {degrees, 0.5, HSLu.l};
         RGBColorI newRGB = newHSL.ConvertHSLtoRGB();
-        const float fintensity = clamp(level, 0, 65535) / 65535.0f;
-        if (linearGamma == 1)
+        const float fintensity = int_to_float[level];
+        if (linearGamma==1)
         {
-            r = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(newRGB.r, 0, 255)], gamma_to_linear[clamp(r, 0, 255)], fintensity), 0, 32768)];
-            g = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(newRGB.g, 0, 255)], gamma_to_linear[clamp(g, 0, 255)], fintensity), 0, 32768)];
-            b = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(newRGB.b, 0, 255)], gamma_to_linear[clamp(b, 0, 255)], fintensity), 0, 32768)];
+           r = linear_to_gamma[weighTwoValues(gamma_to_linear[newRGB.r], gamma_to_linear[r], fintensity)];
+           g = linear_to_gamma[weighTwoValues(gamma_to_linear[newRGB.g], gamma_to_linear[g], fintensity)];
+           b = linear_to_gamma[weighTwoValues(gamma_to_linear[newRGB.b], gamma_to_linear[b], fintensity)];
         } else
         {
-            r = weighTwoValues(newRGB.r, r, fintensity);
-            g = weighTwoValues(newRGB.g, g, fintensity);
-            b = weighTwoValues(newRGB.b, b, fintensity);
+           r = weighTwoValues(newRGB.r, r, fintensity);
+           g = weighTwoValues(newRGB.g, g, fintensity);
+           b = weighTwoValues(newRGB.b, b, fintensity);
         }
     }
 
     void tint(float hue, int level, int altMode, int linearGamma) {
-        if (altMode == 1)
-            return tinto(hue, level, linearGamma);
+        if (altMode==1)
+           return tinto(hue, level, linearGamma);
 
         int z = getGrayscale(r, g, b);
-        float gray = z / 255.0f;
+        float gray = char_to_float[z];
         float normalized_hue = hue;
         while (normalized_hue > 360.0f) normalized_hue -= 360.0f;
         while (normalized_hue < 0.0f) normalized_hue += 360.0f;
@@ -590,67 +605,68 @@ struct RGBAColor {
         switch (hi) {
             case 0:
                 nr = z;
-                ng = (int)round(t * 255.0f);
+                ng = t * 255.0f;
                 nb = 0;
                 break;
             case 1:
-                nr = (int)round(q * 255.0f);
+                nr = q * 255.0f;
                 ng = z;
                 nb = 0;
                 break;
             case 2:
                 nr = 0;
                 ng = z;
-                nb = (int)round(t * 255.0f);
+                nb = t * 255.0f;
                 break;
             case 3:
                 nr = 0;
-                ng = (int)round(q * 255.0f);
+                ng = q * 255.0f;
                 nb = z;
                 break;
             case 4:
-                nr = (int)round(t * 255.0f);
+                nr = t * 255.0f;
                 ng = 0;
                 nb = z;
                 break;
             case 5:
                 nr = z;
                 ng = 0;
-                nb = (int)round(q * 255.0f);
+                nb = q * 255.0f;
                 break;
         }
 
-        z = z / 3;
-        const float fintensity = clamp(level, 0, 65535) / 65535.0f;
+        z = z/3; // gray
+        const float fintensity = int_to_float[level];
         nr = clamp(nr + z, 0, 255);
         ng = clamp(ng + z, 0, 255);
         nb = clamp(nb + z, 0, 255);
-        if (linearGamma == 1)
+        if (linearGamma==1)
         {
-            r = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(nr, 0, 255)], gamma_to_linear[clamp(r, 0, 255)], fintensity), 0, 32768)];
-            g = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(ng, 0, 255)], gamma_to_linear[clamp(g, 0, 255)], fintensity), 0, 32768)];
-            b = linear_to_gamma[clamp(weighTwoValues(gamma_to_linear[clamp(nb, 0, 255)], gamma_to_linear[clamp(b, 0, 255)], fintensity), 0, 32768)];
+           r = linear_to_gamma[weighTwoValues(gamma_to_linear[nr], gamma_to_linear[r], fintensity)];
+           g = linear_to_gamma[weighTwoValues(gamma_to_linear[ng], gamma_to_linear[g], fintensity)];
+           b = linear_to_gamma[weighTwoValues(gamma_to_linear[nb], gamma_to_linear[b], fintensity)];
         } else
         {
-            r = weighTwoValues(nr, r, fintensity);
-            g = weighTwoValues(ng, g, fintensity);
-            b = weighTwoValues(nb, b, fintensity);
+           r = weighTwoValues(nr, r, fintensity);
+           g = weighTwoValues(ng, g, fintensity);
+           b = weighTwoValues(nb, b, fintensity);
         }
     }
 };
+
 
 struct RGBA16color {
     int b, g, r, a;
 
     HSLColor ConvertRGBtoHSL() {
-        const double rf = clamp(r, 0, 65535) / 65535.0;
-        const double gf = clamp(g, 0, 65535) / 65535.0;
-        const double bf = clamp(b, 0, 65535) / 65535.0;
-        const double minu    = min(rf, min(gf, bf));
-        const double maxu    = max(rf, max(gf, bf));
-        const double del_Max = maxu - minu;
-        const double L       = (maxu + minu) / 2.0;
-        double H = 0.0, S = 0.0;
+       const double rf = int_to_float[r];
+       const double gf = int_to_float[g];
+       const double bf = int_to_float[b];
+       const double minu    = min(rf, min(gf, bf));
+       const double maxu    = max(rf, max(gf, bf));
+       const double del_Max = maxu - minu;
+       const double L       = (maxu + minu) / 2.0f;
+       double H = 0.0, S = 0.0;
 
         if (del_Max > 0.0)
         {
@@ -681,31 +697,43 @@ struct RGBA16color {
 
     void channelOffset(int ao, int ro, int go, int bo, int noClamping) {
         a = clamp(a + ao, 0, 65535);
-        r = (noClamping == 1) ? r + ro : clamp(r + ro, 0, 65535);
-        g = (noClamping == 1) ? g + go : clamp(g + go, 0, 65535);
-        b = (noClamping == 1) ? b + bo : clamp(b + bo, 0, 65535);
+        r = (noClamping==1) ? r + ro : clamp(r + ro, 0, 65535);
+        g = (noClamping==1) ? g + go : clamp(g + go, 0, 65535);
+        b = (noClamping==1) ? b + bo : clamp(b + bo, 0, 65535);
     }
 
     void threshold(int ao, int ro, int go, int bo, int seeThrough) {
-        if (seeThrough == 2)
+        if (seeThrough==2)
         {
-            if (ao >= 0) a = (a > ao) ? a : 0;
-            if (ro >= 0) r = (r > ro) ? r : 0;
-            if (go >= 0) g = (g > go) ? g : 0;
-            if (bo >= 0) b = (b > bo) ? b : 0;
-        } else if (seeThrough == 3)
-        {
-            if (ao >= 0) a = (a > ao) ? 65535 : a;
-            if (ro >= 0) r = (r > ro) ? 65535 : r;
-            if (go >= 0) g = (g > go) ? 65535 : g;
-            if (bo >= 0) b = (b > bo) ? 65535 : b;
-        } else
-        {
-            if (ao >= 0) a = (a > ao) ? 65535 : 0;
-            if (ro >= 0) r = (r > ro) ? 65535 : 0;
-            if (go >= 0) g = (g > go) ? 65535 : 0;
-            if (bo >= 0) b = (b > bo) ? 65535 : 0;
-        }
+           if (ao>=0)
+              a = (a>ao) ? a : 0;
+           if (ro>=0)
+              r = (r>ro) ? r : 0;
+           if (go>=0)
+              g = (g>go) ? g : 0;
+           if (bo>=0)
+              b = (b>bo) ? b : 0;
+       } else if (seeThrough==3)
+       {
+          if (ao>=0)
+             a = (a>ao) ? 65535 : a;
+          if (ro>=0)
+             r = (r>ro) ? 65535 : r;
+          if (go>=0)
+             g = (g>go) ? 65535 : g;
+          if (bo>=0)
+             b = (b>bo) ? 65535 : b;
+      } else
+      {
+         if (ao>=0)
+            a = (a>ao) ? 65535 : 0;
+         if (ro>=0)
+            r = (r>ro) ? 65535 : 0;
+         if (go>=0)
+            g = (g>go) ? 65535 : 0;
+         if (bo>=0)
+            b = (b>bo) ? 65535 : 0;
+      }
     }
 
     void invert() {
@@ -739,352 +767,358 @@ struct RGBA16color {
     }
 
     void brightness(int level, int altMode, int noClamping, float fintensity) {
-        if (altMode == 0)
+        if (altMode==0)
         {
-            if (level < 0 && noClamping == 0)
-            {
-                r = LUTgammaBright[clamp(r, 0, 65535)];
-                g = LUTgammaBright[clamp(g, 0, 65535)];
-                b = LUTgammaBright[clamp(b, 0, 65535)];
-            }
-            r = (noClamping == 1) ? r + level : clamp(r + level, 0, 65535);
-            g = (noClamping == 1) ? g + level : clamp(g + level, 0, 65535);
-            b = (noClamping == 1) ? b + level : clamp(b + level, 0, 65535);
-        } else
-        {
-            if (noClamping == 1)
-            {
-                r = r + (float)r * fintensity;
-                g = g + (float)g * fintensity;
-                b = b + (float)b * fintensity;
-            } else
-            {
-                r = LUTbright[clamp(r, 0, 65535)];
-                g = LUTbright[clamp(g, 0, 65535)];
-                b = LUTbright[clamp(b, 0, 65535)];
-            }
-        }
+           if (level<0 && noClamping==0)
+           {
+              r = LUTgammaBright[r];
+              g = LUTgammaBright[g];
+              b = LUTgammaBright[b];
+           }
+           r = (noClamping==1) ? r + level : clamp(r + level, 0, 65535);
+           g = (noClamping==1) ? g + level : clamp(g + level, 0, 65535);
+           b = (noClamping==1) ? b + level : clamp(b + level, 0, 65535);
+       } else
+       {
+           if (noClamping==1)
+           {
+              // float fintensity = (level>0) ? level/32768.0f : -1*int_to_float[-1*level];
+              r = r + (float)r*fintensity;
+              g = g + (float)g*fintensity;
+              b = b + (float)b*fintensity;
+           } else
+           {
+              r = LUTbright[r];
+              g = LUTbright[g];
+              b = LUTbright[b];
+           }
+       }
     }
 
     int getGrayscaleAdvanced() {
-        const float minu = min((float)r, min((float)g, (float)b));
-        float maxu = max((float)r, max((float)g, (float)b));
-        float nr = r;
-        float ng = g;
-        float nb = b;
-        if (minu < 0.0f)
-        {
-            nr = r - minu;
-            ng = g - minu;
-            nb = b - minu;
-        }
-        if (maxu < 65535.0f)
-            maxu = 65535.0f;
+       const float minu = min(r, min(g, b));
+       float maxu = max(r, max(g, b));
+       float nr = r;
+       float ng = g;
+       float nb = b;
+       if (minu<0)
+       {
+          nr = r - minu;
+          ng = g - minu;
+          nb = b - minu;
+       }
 
-        nr = nr * 0.299701f;
-        ng = ng * 0.587130f;
-        nb = nb * 0.114180f;
-        int gray = (int)round(nr + ng + nb);
-        if ((float)gray > maxu)
-            gray = (int)maxu;
+       if (maxu<65535)
+          maxu = 65535.0f;
 
-        return gray;
+       nr = nr*0.299701f;
+       ng = ng*0.587130f;
+       nb = nb*0.114180f;
+       int gray = nr + ng + nb;
+       if (gray>maxu)
+          gray = maxu;
+
+       return gray;
     }
 
     void shadows(int level, int altMode, int linearGamma, int gray, int noClamping, float fi) {
-        int nr, ng, nb;
-        if (noClamping == 1)
-        {
-            float maxu = max((float)r, max((float)g, (float)b));
-            if (maxu < 65535.0f)
-                maxu = 65535.0f;
+       int nr, ng, nb;
+       if (noClamping==1)
+       {
+           float maxu = max(r, max(g, b));
+           float minu = min(r, min(g, b));
+           if (maxu<65535)
+              maxu = 65535.0f;
 
-            nr = r + (float)r * fi;
-            ng = g + (float)g * fi;
-            nb = b + (float)b * fi;
-            float gz = getGrayscaleAdvanced();
-            if (altMode != 1)
-                gz = gz * 2.0f;
+           nr = r + (float)r*fi;
+           ng = g + (float)g*fi;
+           nb = b + (float)b*fi;
+           float gz = getGrayscaleAdvanced();
+           if (altMode!=1)
+              gz = gz*2.0f;
 
-            float fintensity = 1.0f - (gz / maxu);
-            r = weighTwoValues(nr, r, fintensity);
-            g = weighTwoValues(ng, g, fintensity);
-            b = weighTwoValues(nb, b, fintensity);
-        } else
-        {
-            if (altMode == 1)
-                gray = clamp(65535 - gray, 0, 65535);
-            else
-                gray = clamp(65535 - (gray * 2), 0, 65535);
+           float fintensity = 1.0f - (gz / maxu);
+           r = weighTwoValues(nr, r, fintensity);
+           g = weighTwoValues(ng, g, fintensity);
+           b = weighTwoValues(nb, b, fintensity);
+       } else
+       {
+           if (altMode==1)
+              gray = clamp(65535 - gray, 0, 65535);
+           else
+              gray = clamp(65535 - (gray*2), 0, 65535);
 
-            nr = LUTshadows[clamp(r, 0, 65535)];
-            ng = LUTshadows[clamp(g, 0, 65535)];
-            nb = LUTshadows[clamp(b, 0, 65535)];
-            float fintensity = clamp(gray, 0, 65535) / 65535.0f;
-            if (linearGamma == 1)
-            {
-                fintensity += 0.1f;
-                r = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(nr, 0, 65535)], gamma_to_linearInt16[clamp(r, 0, 65535)], fintensity), 0, 65535)];
-                g = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(ng, 0, 65535)], gamma_to_linearInt16[clamp(g, 0, 65535)], fintensity), 0, 65535)];
-                b = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(nb, 0, 65535)], gamma_to_linearInt16[clamp(b, 0, 65535)], fintensity), 0, 65535)];
-            } else
-            {
-                r = weighTwoValues(nr, r, fintensity);
-                g = weighTwoValues(ng, g, fintensity);
-                b = weighTwoValues(nb, b, fintensity);
-            }
-        }
+           nr = LUTshadows[r];
+           ng = LUTshadows[g];
+           nb = LUTshadows[b];
+           float fintensity = int_to_float[gray];
+           if (linearGamma==1)
+           {
+              fintensity += 0.1;
+              r = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[nr], gamma_to_linearInt16[r], fintensity)];
+              g = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[ng], gamma_to_linearInt16[g], fintensity)];
+              b = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[nb], gamma_to_linearInt16[b], fintensity)];
+           } else
+           {
+              r = weighTwoValues(nr, r, fintensity);
+              g = weighTwoValues(ng, g, fintensity);
+              b = weighTwoValues(nb, b, fintensity);
+           }
+       }
     }
 
     void highlights(int level, int altMode, int linearGamma, float factor, int gray, int noClamping, float fi) {
-        int nr, ng, nb;
-        if (noClamping == 1)
-        {
-            float maxu = max((float)r, max((float)g, (float)b));
-            if (maxu < 65535.0f)
-                maxu = 65535.0f;
+       int nr, ng, nb;
+       if (noClamping==1)
+       {
+           float maxu = max(r, max(g, b));
+           if (maxu<65535)
+              maxu = 65535.0f;
 
-            nr = r + (float)r * fi;
-            ng = g + (float)g * fi;
-            nb = b + (float)b * fi;
-            float gz = getGrayscaleAdvanced();
-            if (altMode == 1)
-                gz = gz * 1.25f;
-            else
-                gz = gz / 1.25f;
+           nr = r + (float)r*fi;
+           ng = g + (float)g*fi;
+           nb = b + (float)b*fi;
+           float gz = getGrayscaleAdvanced();
+           if (altMode==1)
+              gz = gz*1.25f;
+           else
+              gz = gz/1.25f;
 
-            float fintensity = gz / (maxu / 1.5f);
-            r = weighTwoValues(nr, r, fintensity);
-            g = weighTwoValues(ng, g, fintensity);
-            b = weighTwoValues(nb, b, fintensity);
-        } else
-        {
-            if (altMode == 1)
-                gray = contraMathsInt16(gray * 1.5f, factor, 32768);
-            else
-                gray = contraMathsInt16(gray, factor, 32768);
+           float fintensity = gz / (maxu/1.5f);
+           r = weighTwoValues(nr, r, fintensity);
+           g = weighTwoValues(ng, g, fintensity);
+           b = weighTwoValues(nb, b, fintensity);
+       } else
+       {
+           if (altMode==1)
+              gray = contraMathsInt16(gray*1.5f, factor, 32768);
+           else
+              gray = contraMathsInt16(gray, factor, 32768);
 
-            nr = LUThighs[clamp(r, 0, 65535)];
-            ng = LUThighs[clamp(g, 0, 65535)];
-            nb = LUThighs[clamp(b, 0, 65535)];
-            float fintensity = clamp(gray, 0, 65535) / 65535.0f;
-            if (linearGamma == 1)
-            {
-                r = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(nr, 0, 65535)], gamma_to_linearInt16[clamp(r, 0, 65535)], fintensity), 0, 65535)];
-                g = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(ng, 0, 65535)], gamma_to_linearInt16[clamp(g, 0, 65535)], fintensity), 0, 65535)];
-                b = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(nb, 0, 65535)], gamma_to_linearInt16[clamp(b, 0, 65535)], fintensity), 0, 65535)];
-            } else
-            {
-                r = weighTwoValues(nr, r, fintensity);
-                g = weighTwoValues(ng, g, fintensity);
-                b = weighTwoValues(nb, b, fintensity);
-            }
-        }
+           nr = LUThighs[r];
+           ng = LUThighs[g];
+           nb = LUThighs[b];
+           float fintensity = int_to_float[gray];
+           if (linearGamma==1)
+           {
+              r = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[nr], gamma_to_linearInt16[r], fintensity)];
+              g = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[ng], gamma_to_linearInt16[g], fintensity)];
+              b = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[nb], gamma_to_linearInt16[b], fintensity)];
+           } else
+           {
+              r = weighTwoValues(nr, r, fintensity);
+              g = weighTwoValues(ng, g, fintensity);
+              b = weighTwoValues(nb, b, fintensity);
+           }
+       }
     }
 
     void gamma(int level, int bright, int altMode, int noClamping) {
-        if (noClamping == 0)
-        {
-            r = LUTgamma[clamp(r, 0, 65535)];
-            g = LUTgamma[clamp(g, 0, 65535)];
-            b = LUTgamma[clamp(b, 0, 65535)];
-        } else
-        {
-            const float minu = min((float)r, min((float)g, (float)b));
-            float maxu = max((float)r, max((float)g, (float)b));
-            float nr = r;
-            float ng = g;
-            float nb = b;
-            float offset = 0.0f;
-            if (minu < 0.0f)
-            {
-                nr = r - minu;
-                ng = g - minu;
-                nb = b - minu;
-                offset = minu;
-            }
-            float denominator = (maxu < 65535.0f ? 65535.0f : maxu) - offset;
-            if (denominator <= 0.0f) denominator = 1.0f;
+      if (noClamping==0)
+      {
+          r = LUTgamma[r];
+          g = LUTgamma[g];
+          b = LUTgamma[b];
+      } else
+      {
+          const float minu = min(r, min(g, b));
+          float maxu = max(r, max(g, b));
+          float nr = r;
+          float ng = g;
+          float nb = b;
+          float offset = 0.0f;
+          if (minu < 0.0f)
+          {
+              nr = r - minu;
+              ng = g - minu;
+              nb = b - minu;
+              offset = minu;
+          }
+          float denominator = (maxu < 65535.0f ? 65535.0f : maxu) - offset;
+          if (denominator <= 0.0f) denominator = 1.0f;
 
-            nr = nr / denominator;
-            ng = ng / denominator;
-            nb = nb / denominator;
+          nr = nr / denominator;
+          ng = ng / denominator;
+          nb = nb / denominator;
 
-            nr = clamp(nr, 0.0f, 1.0f);
-            ng = clamp(ng, 0.0f, 1.0f);
-            nb = clamp(nb, 0.0f, 1.0f);
+          nr = clamp(nr, 0.0f, 1.0f);
+          ng = clamp(ng, 0.0f, 1.0f);
+          nb = clamp(nb, 0.0f, 1.0f);
 
-            const int thisLevel = (bright < 0 && altMode == 0 && level > 300) ? level + abs(bright) / 300 : level;
-            const double gamma_val = 300.0 / (double)thisLevel;
-            r = (int)round(denominator * pow((double)nr, gamma_val) + offset);
-            g = (int)round(denominator * pow((double)ng, gamma_val) + offset);
-            b = (int)round(denominator * pow((double)nb, gamma_val) + offset);
+          const int thisLevel = (bright < 0 && altMode == 0 && level > 300) ? level + abs(bright) / 300 : level;
+          const double gamma_val = 300.0 / (double)thisLevel;
+          r = (int)round(denominator * pow((double)nr, gamma_val) + offset);
+          g = (int)round(denominator * pow((double)ng, gamma_val) + offset);
+          b = (int)round(denominator * pow((double)nb, gamma_val) + offset);
 
-            if (bright < 0 && altMode == 0)
-            {
-                if (r < -165535) r = -165535;
-                if (g < -165535) g = -165535;
-                if (b < -165535) b = -165535;
-            }
-        }
+          if (bright < 0 && altMode == 0)
+          {
+              if (r < -165535) r = -165535;
+              if (g < -165535) g = -165535;
+              if (b < -165535) b = -165535;
+          }
+      }
     }
 
     void contrast(int level, int altContra, int linearGamma, float fintensity, int noClamping, float fip) {
-        if (altContra == 1)
+        if (altContra==1)
         {
-            a = LUTcontra[clamp(a, 0, 65535)];
-            return;
+           a = LUTcontra[a];
+           return;
         }
 
-        if (noClamping == 1)
+        if (noClamping==1)
         {
-            const float minu = min((float)r, min((float)g, (float)b));
-            float maxu = max((float)r, max((float)g, (float)b));
-            float nr = r;
-            float ng = g;
-            float nb = b;
-            float offset = 0.0f;
-            const float thisMin = (level > 0) ? minu : abs(minu);
-            float fi;
-            if (level >= 0)
-            {
-                int gray = getGrayscaleAdvanced();
-                nr = weighTwoValues(gray, r, fintensity);
-                ng = weighTwoValues(gray, g, fintensity);
-                nb = weighTwoValues(gray, b, fintensity);
-                if (level < 19500)
-                {
-                    fi = level / 19500.0f;
-                    r = weighTwoValues(nr, r, fi);
-                    g = weighTwoValues(ng, g, fi);
-                    b = weighTwoValues(nb, b, fi);
-                } else
-                {
-                    r = nr;
-                    g = ng;
-                    b = nb;
-                }
-            }
+           const float minu = min(r, min(g, b));
+           float maxu = max(r, max(g, b));
+           float nr = r;
+           float ng = g;
+           float nb = b;
+           float offset = 0;
+           const float thisMin = (level>0) ? minu : abs(minu);
+           float fi;
+           if (level>=0)
+           {
+              int gray = getGrayscaleAdvanced();
+              nr = weighTwoValues(gray, r, fintensity);
+              ng = weighTwoValues(gray, g, fintensity);
+              nb = weighTwoValues(gray, b, fintensity);
+              if (level<19500)
+              {
+                 fi = level/19500.0f;
+                 r = weighTwoValues(nr, r, fi);
+                 g = weighTwoValues(ng, g, fi);
+                 b = weighTwoValues(nb, b, fi);
+             } else
+             {
+                 r = nr;
+                 g = ng;
+                 b = nb;
+             }
+           }
 
-            if (minu < 0.0f)
-            {
-                nr = r - minu;
-                ng = g - minu;
-                nb = b - minu;
-                offset = minu * 2.0f + (float)level;
-            }
-
-            if (maxu < 65535.0f)
-                maxu = 65535.0f;
-
-            float mid = maxu / 2.0f;
-            if (level > 0)
-            {
-                nr = floor(fip * (nr - mid)) + mid - offset;
-                ng = floor(fip * (ng - mid)) + mid - offset;
-                nb = floor(fip * (nb - mid)) + mid - offset;
-                if (level < 16000)
-                {
-                    r = weighTwoValues(nr, r, fip);
-                    g = weighTwoValues(ng, g, fip);
-                    b = weighTwoValues(nb, b, fip);
-                } else
-                {
-                    r = (int)nr;
-                    g = (int)ng;
-                    b = (int)nb;
-                }
-            } else
-            {
-                r = weighTwoValues(r, 32768, fip);
-                g = weighTwoValues(g, 32768, fip);
-                b = weighTwoValues(b, 32768, fip);
-            }
+           if (minu<0)
+           {
+              nr = r + thisMin;
+              ng = g + thisMin;
+              nb = b + thisMin;
+              offset = thisMin*2 + level;
+           }
+    
+           if (maxu<65535)
+              maxu = 65535.0f;
+    
+           float mid = maxu/2.0f;
+           if (level>0)
+           {
+              nr = floor( (float)fip * (nr - mid) ) + mid - offset;
+              ng = floor( (float)fip * (ng - mid) ) + mid - offset;
+              nb = floor( (float)fip * (nb - mid) ) + mid - offset;
+              if (level<16000)
+              {
+                 // level = clamp(level, 0, 16000);
+                 fi = level/16000.0f;
+                 r = weighTwoValues(nr, r, fip);
+                 g = weighTwoValues(ng, g, fip);
+                 b = weighTwoValues(nb, b, fip);
+              } else
+              {
+                 r = nr;
+                 g = ng;
+                 b = nb;
+              }
+           } else
+           {
+              r = weighTwoValues(r, 32768, fip);
+              g = weighTwoValues(g, 32768, fip);
+              b = weighTwoValues(b, 32768, fip);
+           }
         } else
         {
-            if (level > 0)
-            {
-                int gray = getInt16grayscale(r, g, b);
-                if (linearGamma == 1)
-                {
-                    r = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(gray, 0, 65535)], gamma_to_linearInt16[clamp(r, 0, 65535)], fintensity), 0, 65535)];
-                    g = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(gray, 0, 65535)], gamma_to_linearInt16[clamp(g, 0, 65535)], fintensity), 0, 65535)];
-                    b = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(gray, 0, 65535)], gamma_to_linearInt16[clamp(b, 0, 65535)], fintensity), 0, 65535)];
-                } else
-                {
-                    r = weighTwoValues(gray, r, fintensity);
-                    g = weighTwoValues(gray, g, fintensity);
-                    b = weighTwoValues(gray, b, fintensity);
-                }
-            }
-
-            r = LUTcontra[clamp(r, 0, 65535)];
-            g = LUTcontra[clamp(g, 0, 65535)];
-            b = LUTcontra[clamp(b, 0, 65535)];
+           // clamped mode
+           if (level>0)
+           {
+              int gray = getInt16grayscale(r, g, b);
+              if (linearGamma==1)
+              {
+                 r = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[gray], gamma_to_linearInt16[r], fintensity)];
+                 g = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[gray], gamma_to_linearInt16[g], fintensity)];
+                 b = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[gray], gamma_to_linearInt16[b], fintensity)];
+              } else
+              {
+                 r = weighTwoValues(gray, r, fintensity);
+                 g = weighTwoValues(gray, g, fintensity);
+                 b = weighTwoValues(gray, b, fintensity);
+              }
+           }
+   
+           r = LUTcontra[r];
+           g = LUTcontra[g];
+           b = LUTcontra[b];
         }
     }
 
     void saturation(int level, int altMode, int linearGamma, float saturation) {
-        if (altMode > 1)
+        if (altMode>1)
         {
-            int gray = (altMode == 2) ? r : g;
-            if (altMode == 3)
-                gray = b;
-            r = gray;
-            g = gray;
-            b = gray;
-        } else if (altMode == 1)
+           int gray = (altMode==2) ? r : g;
+           if (altMode==3)
+              gray = b;
+           r = gray;
+           g = gray;
+           b = gray;
+        } else if (altMode==1)
         {
             HSLColor HSLu = ConvertRGBtoHSL();
-            saturation = (level < 0) ? 0.001f : saturation;
+            saturation = (level<0) ? 0.001f : saturation;
             HSLColor newHSL = {HSLu.h, saturation, HSLu.l};
             RGBColorI newRGB = newHSL.ConvertHSLtoRGBint16();
             float fi = 0.0f;
             if (inRange(0, 16384, level))
-                fi = level / 16384.0f;
+               fi = level/16384.0f;
             else if (inRange(-65535, 0, level))
-                fi = abs(level) / 65535.0f;
+               fi = abs(level)/65535.0f;
 
             if (inRange(-65535, 16384, level))
             {
-                r = weighTwoValues(newRGB.r, r, fi);
-                g = weighTwoValues(newRGB.g, g, fi);
-                b = weighTwoValues(newRGB.b, b, fi);
+               r = weighTwoValues(newRGB.r, r, fi);
+               g = weighTwoValues(newRGB.g, g, fi);
+               b = weighTwoValues(newRGB.b, b, fi);
             } else
             {
-                r = newRGB.r;
-                g = newRGB.g;
-                b = newRGB.b;
+               r = newRGB.r;
+               g = newRGB.g;
+               b = newRGB.b;
             }
-        } else if (level < 0)
+        } else if (level<0)
         {
-            const int gray = getInt16grayscale(r, g, b);
-            const float fintensity = clamp(abs(level), 0, 65535) / 65535.0f;
-            if (linearGamma == 1)
-            {
-                r = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(gray, 0, 65535)], gamma_to_linearInt16[clamp(r, 0, 65535)], fintensity), 0, 65535)];
-                g = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(gray, 0, 65535)], gamma_to_linearInt16[clamp(g, 0, 65535)], fintensity), 0, 65535)];
-                b = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(gray, 0, 65535)], gamma_to_linearInt16[clamp(b, 0, 65535)], fintensity), 0, 65535)];
-            } else
-            {
-                r = weighTwoValues(gray, r, fintensity);
-                g = weighTwoValues(gray, g, fintensity);
-                b = weighTwoValues(gray, b, fintensity);
-            }
+           const int gray = getInt16grayscale(r, g, b);
+           const float fintensity = int_to_float[abs(level)];
+           if (linearGamma==1)
+           {
+              r = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[gray], gamma_to_linearInt16[r], fintensity)];
+              g = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[gray], gamma_to_linearInt16[g], fintensity)];
+              b = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[gray], gamma_to_linearInt16[b], fintensity)];
+           } else
+           {
+              r = weighTwoValues(gray, r, fintensity);
+              g = weighTwoValues(gray, g, fintensity);
+              b = weighTwoValues(gray, b, fintensity);
+           }
         } else
         {
-            const float max_val = max((float)r, max((float)g, (float)b));
-            const float min_val = min((float)r, min((float)g, (float)b));
-            const float luxAvg = (max_val + min_val) / 2.0f;
-            const float factor = (level + 21823) / 21823.0f;
+           const float max_val = max(max(r, g), b);
+           const float min_val = min(min(r, g), b);
+           const float luxAvg = (max_val + min_val) / 2.0f;
+           const float factor = (level + 21823)/21823.0f;
 
-            float lux = clamp(getInt16grayscale(r, g, b) / 3.0f, 0.0f, 65535.0f);
-            lux = weighTwoValues(lux, 0.0f, clamp(level, 0, 65535) / 65535.0f);
+           float lux = clamp(getInt16grayscale(r, g, b)/3.0f, 0.0f, 65535.0f);
+           lux = weighTwoValues(lux, 0.0f, int_to_float[level]);
 
-            r = clamp((int)round(factor * ((float)r - luxAvg) + luxAvg + lux), 0, 65535);
-            g = clamp((int)round(factor * ((float)g - luxAvg) + luxAvg + lux), 0, 65535);
-            b = clamp((int)round(factor * ((float)b - luxAvg) + luxAvg + lux), 0, 65535);
-        }
+           r = clamp(factor * ((float)r - luxAvg) + luxAvg + lux, 0.0f, 65535.0f);
+           g = clamp(factor * ((float)g - luxAvg) + luxAvg + lux, 0.0f, 65535.0f);
+           b = clamp(factor * ((float)b - luxAvg) + luxAvg + lux, 0.0f, 65535.0f);
+        };
     }
 
     void hueRotate(int degrees, float saturation, int altMode, int level) {
@@ -1097,47 +1131,47 @@ struct RGBA16color {
         RGBColorI newRGB = newHSL.ConvertHSLtoRGBint16();
         float fi = 0.0f;
         if (inRange(0, 15, degrees))
-            fi = degrees / 15.0f;
+           fi = degrees/15.0f;
         else if (inRange(-15, 0, degrees))
-            fi = abs(degrees) / 15.0f;
-
+           fi = abs(degrees)/15.0f;
+        
         if (inRange(-15, 15, degrees))
         {
-            r = weighTwoValues(newRGB.r, r, fi);
-            g = weighTwoValues(newRGB.g, g, fi);
-            b = weighTwoValues(newRGB.b, b, fi);
+           r = weighTwoValues(newRGB.r, r, fi);
+           g = weighTwoValues(newRGB.g, g, fi);
+           b = weighTwoValues(newRGB.b, b, fi);
         } else
         {
-            r = newRGB.r;
-            g = newRGB.g;
-            b = newRGB.b;
+           r = newRGB.r;
+           g = newRGB.g;
+           b = newRGB.b;
         }
     }
 
     void tinto(int degrees, int level, int linearGamma) {
         HSLColor HSLu = ConvertRGBtoHSL();
-        HSLColor newHSL = {(double)degrees, 0.5, HSLu.l};
+        HSLColor newHSL = {degrees, 0.5, HSLu.l};
         RGBColorI newRGB = newHSL.ConvertHSLtoRGBint16();
-        const float fintensity = clamp(level, 0, 65535) / 65535.0f;
-        if (linearGamma == 1)
+        const float fintensity = int_to_float[level];
+        if (linearGamma==1)
         {
-            r = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(newRGB.r, 0, 65535)], gamma_to_linearInt16[clamp(r, 0, 65535)], fintensity), 0, 65535)];
-            g = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(newRGB.g, 0, 65535)], gamma_to_linearInt16[clamp(g, 0, 65535)], fintensity), 0, 65535)];
-            b = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(newRGB.b, 0, 65535)], gamma_to_linearInt16[clamp(b, 0, 65535)], fintensity), 0, 65535)];
+           r = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[newRGB.r], gamma_to_linearInt16[r], fintensity)];
+           g = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[newRGB.g], gamma_to_linearInt16[g], fintensity)];
+           b = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[newRGB.b], gamma_to_linearInt16[b], fintensity)];
         } else
         {
-            r = weighTwoValues(newRGB.r, r, fintensity);
-            g = weighTwoValues(newRGB.g, g, fintensity);
-            b = weighTwoValues(newRGB.b, b, fintensity);
+           r = weighTwoValues(newRGB.r, r, fintensity);
+           g = weighTwoValues(newRGB.g, g, fintensity);
+           b = weighTwoValues(newRGB.b, b, fintensity);
         }
     }
 
     void tint(float hue, int level, int altMode, int linearGamma) {
-        if (altMode == 1)
-            return tinto((int)hue, level, linearGamma);
+        if (altMode==1)
+           return tinto(hue, level, linearGamma);
 
         int z = getInt16grayscale(r, g, b);
-        const float gray = z / 65535.0f;
+        const float gray = int_to_float[z];
         float normalized_hue = hue;
         while (normalized_hue > 360.0f) normalized_hue -= 360.0f;
         while (normalized_hue < 0.0f) normalized_hue += 360.0f;
@@ -1149,51 +1183,51 @@ struct RGBA16color {
         switch (hi) {
             case 0:
                 nr = z;
-                ng = (int)round(t * 65535.0f);
+                ng = t * 65535.0f;
                 nb = 0;
                 break;
             case 1:
-                nr = (int)round(q * 65535.0f);
+                nr = q * 65535.0f;
                 ng = z;
                 nb = 0;
                 break;
             case 2:
                 nr = 0;
                 ng = z;
-                nb = (int)round(t * 65535.0f);
+                nb = t * 65535.0f;
                 break;
             case 3:
                 nr = 0;
-                ng = (int)round(q * 65535.0f);
+                ng = q * 65535.0f;
                 nb = z;
                 break;
             case 4:
-                nr = (int)round(t * 65535.0f);
+                nr = t * 65535.0f;
                 ng = 0;
                 nb = z;
                 break;
             case 5:
                 nr = z;
                 ng = 0;
-                nb = (int)round(q * 65535.0f);
+                nb = q * 65535.0f;
                 break;
         }
 
-        z = z / 3;
-        const float fintensity = clamp(level, 0, 65535) / 65535.0f;
+        z = z/3; // gray
+        const float fintensity = int_to_float[level];
         nr = clamp(nr + z, 0, 65535);
         ng = clamp(ng + z, 0, 65535);
         nb = clamp(nb + z, 0, 65535);
-        if (linearGamma == 1)
+        if (linearGamma==1)
         {
-            r = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(nr, 0, 65535)], gamma_to_linearInt16[clamp(r, 0, 65535)], fintensity), 0, 65535)];
-            g = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(ng, 0, 65535)], gamma_to_linearInt16[clamp(g, 0, 65535)], fintensity), 0, 65535)];
-            b = linear_to_gammaInt16[clamp(weighTwoValues(gamma_to_linearInt16[clamp(nb, 0, 65535)], gamma_to_linearInt16[clamp(b, 0, 65535)], fintensity), 0, 65535)];
+           r = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[nr], gamma_to_linearInt16[r], fintensity)];
+           g = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[ng], gamma_to_linearInt16[g], fintensity)];
+           b = linear_to_gammaInt16[weighTwoValues(gamma_to_linearInt16[nb], gamma_to_linearInt16[b], fintensity)];
         } else
         {
-            r = weighTwoValues(nr, r, fintensity);
-            g = weighTwoValues(ng, g, fintensity);
-            b = weighTwoValues(nb, b, fintensity);
+           r = weighTwoValues(nr, r, fintensity);
+           g = weighTwoValues(ng, g, fintensity);
+           b = weighTwoValues(nb, b, fintensity);
         }
     }
 };
