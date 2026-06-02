@@ -58,9 +58,121 @@ IWICBitmapFrameDecode  *pWICclassFrameDecoded;
 // IWICFormatConverter *pWICclassConverter;
 IWICBitmapSource       *pWICclassPixelsBitmapSource;
 
+class MaskBitMap {
+private:
+    std::vector<uint64_t> data;
+    size_t num_bits = 0;
+
+public:
+    void resize(size_t size) {
+        num_bits = size;
+        data.assign((size + 63) / 64, 0ULL);
+    }
+
+    void clear() {
+        data.clear();
+        num_bits = 0;
+    }
+
+    void shrink_to_fit() {
+        data.shrink_to_fit();
+    }
+
+    size_t size() const {
+        return num_bits;
+    }
+
+    struct Reference {
+        uint64_t* word;
+        uint64_t mask;
+
+        Reference(uint64_t* w, uint64_t m) : word(w), mask(m) {}
+
+        Reference& operator=(bool val) {
+            auto* atomic_word = reinterpret_cast<std::atomic<uint64_t>*>(word);
+            if (val) {
+                atomic_word->fetch_or(mask, std::memory_order_relaxed);
+            } else {
+                atomic_word->fetch_and(~mask, std::memory_order_relaxed);
+            }
+            return *this;
+        }
+
+        Reference& operator=(const Reference& other) {
+            return operator=(bool(other));
+        }
+
+        operator bool() const {
+            return (*word & mask) != 0;
+        }
+    };
+
+    Reference operator[](size_t idx) {
+        return Reference(&data[idx / 64], 1ULL << (idx % 64));
+    }
+
+    bool operator[](size_t idx) const {
+        return (data[idx / 64] & (1ULL << (idx % 64))) != 0;
+    }
+
+    void fill_zero() {
+        std::fill(data.begin(), data.end(), 0ULL);
+    }
+
+    void fill_zero(size_t start, size_t end) {
+        if (start >= end) return;
+        size_t start_word = start / 64;
+        size_t end_word = (end - 1) / 64;
+
+        if (start_word == end_word) {
+            uint64_t mask = (~0ULL << (start % 64)) & (~0ULL >> (63 - ((end - 1) % 64)));
+            auto* atomic_word = reinterpret_cast<std::atomic<uint64_t>*>(&data[start_word]);
+            atomic_word->fetch_and(~mask, std::memory_order_relaxed);
+        } else {
+            // First word (partial)
+            uint64_t start_mask = (~0ULL << (start % 64));
+            reinterpret_cast<std::atomic<uint64_t>*>(&data[start_word])->fetch_and(~start_mask, std::memory_order_relaxed);
+
+            // Middle words (full)
+            for (size_t w = start_word + 1; w < end_word; ++w) {
+                data[w] = 0ULL;
+            }
+
+            // Last word (partial)
+            uint64_t end_mask = (~0ULL >> (63 - ((end - 1) % 64)));
+            reinterpret_cast<std::atomic<uint64_t>*>(&data[end_word])->fetch_and(~end_mask, std::memory_order_relaxed);
+        }
+    }
+
+    void set_range_to_1(size_t start, size_t end) {
+        if (start > end) return;
+        size_t start_word = start / 64;
+        size_t end_word = end / 64;
+
+        if (start_word == end_word) {
+            uint64_t mask = (~0ULL << (start % 64)) & (~0ULL >> (63 - (end % 64)));
+            auto* atomic_word = reinterpret_cast<std::atomic<uint64_t>*>(&data[start_word]);
+            atomic_word->fetch_or(mask, std::memory_order_relaxed);
+        } else {
+            // First word (partial)
+            uint64_t start_mask = (~0ULL << (start % 64));
+            reinterpret_cast<std::atomic<uint64_t>*>(&data[start_word])->fetch_or(start_mask, std::memory_order_relaxed);
+
+            // Middle words (full)
+            for (size_t w = start_word + 1; w < end_word; ++w) {
+                data[w] = ~0ULL;
+            }
+
+            // Last word (partial)
+            uint64_t end_mask = (~0ULL >> (63 - (end % 64)));
+            reinterpret_cast<std::atomic<uint64_t>*>(&data[end_word])->fetch_or(end_mask, std::memory_order_relaxed);
+        }
+    }
+};
+
 std::vector<unsigned char>  highDephMaskMap;
-std::vector<unsigned char>  polygonMaskMap;
-std::vector<unsigned char>  polygonOtherMaskMap;
+MaskBitMap  polygonMaskMap;
+MaskBitMap  polygonOtherMaskMap;
 // std::vector<std::vector<short>> DrawLineCapsGrid;
 vector<pair<float, float>> DrawLineCapsGrid;
 // vector<pair<int, int>> DrawLineGrid;

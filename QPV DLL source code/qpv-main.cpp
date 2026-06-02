@@ -10,6 +10,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <atomic>
 #include <stack>
 #include <map>
 #include <unordered_set>
@@ -469,7 +470,7 @@ bool initBoolMaskData() {
        fnOutputDebug("polygonMaskMap size=" + std::to_string(s) + "||" + std::to_string(polygonMaskMap.size()));
     }
 
-    fill(polygonMaskMap.begin(), polygonMaskMap.end(), 0);
+    polygonMaskMap.fill_zero();
     // fnOutputDebug("polygonMaskMap refilled to zero ; size = " + std::to_string(s) + "|" + std::to_string(polyW) + " x " + std::to_string(polyH) + "|" + std::to_string(polyX) + " x " + std::to_string(polyY));
     return 1;
 }
@@ -621,9 +622,12 @@ void fillMaskPolyBounds(const int &w, const int &h, const float* PointsList, con
 
              INT64 start_x = max(xa, (INT64)ppx1);
              INT64 end_x = min(xb, (INT64)(ppx2 - 1));
-             for (INT64 x = start_x; x <= end_x; x++)
+             if (start_x <= end_x)
              {
-                  polygonMaskMap[(INT64)(y - polyY) * polyW + x - polyX] = 1;
+                  polygonMaskMap.set_range_to_1(
+                      (INT64)(y - polyY) * polyW + start_x - polyX,
+                      (INT64)(y - polyY) * polyW + end_x - polyX
+                  );
              }
         }
     }
@@ -1673,9 +1677,7 @@ DLL_API int DLL_CALLCONV mergePolyMaskIntoHighDepthMask(int px1, int py1, int px
 
   const INT64 rstart = (INT64)my * polyW + mx;
   const INT64 rend = (INT64)mh * polyW + mw;
-  const auto ztart = polygonMaskMap.begin() + rstart; // Starting from the 3rd element
-  const auto zend = polygonMaskMap.begin() + rend; 
-  fill(ztart, zend, 0);
+  polygonMaskMap.fill_zero(rstart, rend);
   return 1;
 }
 
@@ -1739,7 +1741,7 @@ DLL_API int DLL_CALLCONV prepareDrawLinesMask(int radius, int clipMode, int high
        highDephMaskMap.shrink_to_fit();
     }
 
-    fill(polygonMaskMap.begin(), polygonMaskMap.end(), 0);
+    polygonMaskMap.fill_zero();
     fnOutputDebug("prepareDrawLinesMask() - polygonMaskMap DONE; radius = " + std::to_string(radius));
     return 1;
 }
