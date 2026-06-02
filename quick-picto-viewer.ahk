@@ -5739,7 +5739,10 @@ MouseMoveResponder(actu:=0) {
      SetTimer, dummyRefreshImgSelectionWindow, -2
   } Else If (liveDrawingBrushTool=1 && AnyWindowOpen && AnyWindowOpen!=66)
   {
-     brushSize := (BrushToolDoubleSize=1) ? brushToolSize*2 : brushToolSize
+     brushSize := (BrushToolDoubleSize=1) ? BrushToolSize*2 : BrushToolSize
+     If (viewportQPVimage.imgHandle && BrushToolDoubleSize=1)
+        brushSize := BrushToolSize*4
+
      thisSize := (AnyWindowOpen=64) ? brushSize * zoomLevel : brushSize * viewportDynamicOBJcoords.zl
      Gdip_ResetClip(2NDglPG)
      vpWinClientSize(mainWidth, mainHeight)
@@ -43470,9 +43473,10 @@ PanelBrushTool(dummy:=0, modus:=0) {
     GuiAddPickerColor("x+5 hp w" sml, "BrushToolBcolor")
     GuiAddColor("x+5 hp w60", "BrushToolBcolor")
     GuiAddSlider("BrushToolBopacity", 2,255, 255, "Opacity", "updateUIbrushTool", 1, "x+5 w" opaciSlideW " hp")
-    Gui, Add, Checkbox, x+5 hp wp gupdateUIbrushTool Checked%BrushToolDoubleSize% vBrushToolDoubleSize, Size × 2
+    kk := (viewportQPVimage.imgHandle) ? 4 : 2
+    Gui, Add, Checkbox, x+5 hp wp gupdateUIbrushTool Checked%BrushToolDoubleSize% vBrushToolDoubleSize, Size × %kk%
 
-    GuiAddSlider("BrushToolSize", 1,950, 25, "Brush size: $€", "updateUIbrushTool", 1, "xs y+15 w" slideWid " hp")
+    GuiAddSlider("BrushToolSize", 1,980, 25, ".updateLabelBrushSize", "updateUIbrushTool", 1, "xs y+15 w" slideWid " hp")
     GuiAddSlider("BrushToolStepping", 0,251, 0, ".updateLabelBrushStep", "updateUIbrushTool", 1, "x+10 wp hp")
     GuiAddSlider("BrushToolAspectRatio", -100,100, 0, "Aspect ratio", "updateUIbrushTool", 2, "xs y+10 wp hp")
     GuiAddSlider("BrushToolAngle", -180,180, 0, "Angle: $€°", "updateUIbrushTool", 2, "x+10 wp hp")
@@ -44007,6 +44011,13 @@ updateLabelBrushStep() {
    Return "Steps interpolation: " stepu
 }
 
+updateLabelBrushSize() {
+   theSizeLabel := (BrushToolDoubleSize!=1) ? "Diameter: " BrushToolSize " px" : "Radius: " BrushToolSize " px"
+   If (viewportQPVimage.imgHandle && BrushToolDoubleSize=1)
+      theSizeLabel := "Diameter: " BrushToolSize*4 " px"
+   Return theSizeLabel
+}
+
 updateLabelSlidesSpeed() {
    If (slideShowDelay>=1000)
       p := Round(slideShowDelay/1000, 1) " s"
@@ -44107,10 +44118,7 @@ updateUIbrushTool() {
       actu := (BrushToolType=4) ? "SettingsGUIA: Show" : "SettingsGUIA: Hide"
       GuiControl, % actu, BrushToolEraserRestore
 
-      theSizeLabel := (BrushToolDoubleSize!=1) ? "Diameter: $€ px" : "Radius: $€ px"
       uiSlidersArray["BrushToolAngle", 10] := !BrushToolAutoAngle
-      uiSlidersArray["BrushToolSize", 5] := theSizeLabel
-
       If (BrushToolType=1 && BrushToolSymmetryX=1 && BrushToolSymmetryY=1 && !viewportQPVimage.imgHandle)
          GuiControl, SettingsGUIA: Disable, BrushToolOverDraw
       Else If (BrushToolType=1 || BrushToolType=2)
@@ -46705,7 +46713,7 @@ ReadSettingsBrushPanel(act:=0) {
       delayedWriteTlbrColors(act)
 
    RegAction(act, "autoApplyVPcolors",, 1)
-   RegAction(act, "BrushToolSize",, 2, 2, 950)
+   RegAction(act, "BrushToolSize",, 2, 2, 990)
    RegAction(act, "BrushToolAutoAngle",, 1)
    RegAction(act, "BrushToolDoubleSize",, 1)
    RegAction(act, "BrushToolSoftness",, 2, 1, 100)
@@ -55299,7 +55307,7 @@ uiADDalphaMaskTabs(t1, t2, labelu) {
 
     ToolTip2ctrl(hBtnTglClrA, "Toggle active color")
     ToolTip2ctrl(hBtnTglClrB, "Toggle active color")
-    GuiAddSlider("BrushToolSize", 2,950, 25, "Brush size: $€", labelu, 1, "xs y+15 w" slideWid " hp")
+    GuiAddSlider("BrushToolSize", 2,980, 25, "Brush size: $€", labelu, 1, "xs y+15 w" slideWid " hp")
     GuiAddSlider("BrushToolStepping", 0,251, 0, ".updateLabelBrushStep", labelu, 1, "x+10 wp hp")
     GuiAddSlider("BrushToolAspectRatio", -100,100, 0, "Aspect ratio", labelu, 2, "xs y+10 wp hp")
     GuiAddSlider("BrushToolAngle", -180,180, 0, "Angle: $€°", labelu, 2, "x+10 wp hp")
@@ -74776,7 +74784,7 @@ changeBrushSize(dir) {
    endCaptureCloneBrush()
    BrushToolSize := clampInRange(BrushToolSize, 1, 950)
    friendly := (BrushToolDoubleSize=1) ? "RADIUS" : "DIAMETER"
-   RegAction(1, "BrushToolSize",, 2, 2, 950)
+   RegAction(1, "BrushToolSize",, 2, 2, 980)
    showTOOLtip("Brush " friendly " size: " groupDigits(BrushToolSize) " px", A_ThisFunc, 2, BrushToolSize/950)
    If (AnyWindowOpen=64 || isAlphaMaskWindow()=1)
    {
@@ -76213,7 +76221,7 @@ ActPaintBrushLargeNow() {
    } Else thisWetness := BrushToolWetness
 
    oMx := kX, oMy := kY
-   o_brushSize := brushSize := (BrushToolDoubleSize=1) ? brushToolSize*2 : brushToolSize
+   o_brushSize := brushSize := (BrushToolDoubleSize=1) ? brushToolSize*4 : brushToolSize
    If (BrushToolType>=6 && brushSize<5)
       brushSize := 5
 

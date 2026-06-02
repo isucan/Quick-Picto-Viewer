@@ -901,9 +901,8 @@ bool isPointInParallelogram(Point A, Point B, Point D, Point P) {
     double denominator = (ABx * ADy - ABy * ADx);
 
     // To avoid division by zero, check if the parallelogram is degenerate
-    if (denominator == 0) {
-        return false;  // Degenerate parallelogram (AB and AD are collinear)
-    }
+    if (denominator == 0)
+       return false;  // Degenerate parallelogram (AB and AD are collinear)
 
     // Calculate the coefficients u and v
     double u = (APx * ADy - APy * ADx) / denominator;
