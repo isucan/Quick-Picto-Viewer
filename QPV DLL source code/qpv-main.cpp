@@ -410,7 +410,7 @@ void bresenham_line_algo(const int &w, const int &h, int x0, int y0, const int &
          // polygonMapMax[y0] = max(polygonMapMax[y0], x0);
          polygonMapMin[y0] = min(polygonMapMin[y0], x0);
          // fnOutputDebug("maxu=" + std::to_string(polygonMapMax[y0]) + " | minu=" + std::to_string(polygonMapMin[y0]));
-         if (!((x0 - polyX)>=polyW || (y0 - polyY)>=polyH || (x0 - polyX)<polyX || (y0 - polyY)<polyY || x0<0 || y0<0))
+         if (x0 >= polyX && x0 < polyX + polyW && y0 >= polyY && y0 < polyY + polyH)
             polygonMaskMap[(UINT64)(y0 - polyY) * polyW + (x0 - polyX)] = 1;
       }
 
@@ -480,10 +480,10 @@ inline bool isPointInPolygonOptimized(const INT64 pX, const INT64 pY, const floa
         if (j < 0)
             j = PointsCount * 2 - 2;
 
-        const float xi = PointsList[i];
-        const float yi = PointsList[i + 1];
-        const float xj = PointsList[j];
-        const float yj = PointsList[j + 1];
+        const double xi = PointsList[i];
+        const double yi = PointsList[i + 1];
+        const double xj = PointsList[j];
+        const double yj = PointsList[j + 1];
 
         if (pX < (xj - xi) * (pY - yi) / (yj - yi) + xi)
             inside = !inside;
@@ -491,27 +491,30 @@ inline bool isPointInPolygonOptimized(const INT64 pX, const INT64 pY, const floa
     return inside;
 }
 
-void traceMaskPolyBoundaries(const int &w, const int &h, float* &PointsList, const int &PointsCount, const int &ppx1, const int &ppy1, const int &ppx2, const int &ppy2, std::vector<std::vector<int>> &polygonMapEdges, std::vector<int> &polygonMapMin) {
+void traceMaskPolyBoundaries(const int &w, const int &h, const float* PointsList, const int &PointsCount, const int &ppx1, const int &ppy1, const int &ppx2, const int &ppy2, std::vector<std::vector<int>> &polygonMapEdges, std::vector<int> &polygonMapMin) {
     int i = 2;
     int xa = PointsList[0];
     int ya = PointsList[1];
     
     polygonMapMin.assign(h, INT_MAX);
 
-    for (int pts = 0; pts < PointsCount;)
+    for (int pts = 0; pts < PointsCount; pts++)
     {
-        int xb = PointsList[i];
-        i++;
-        int yb = PointsList[i];
-        i++;
-        if (pts==PointsCount - 1)
+        int xb, yb;
+        if (pts == PointsCount - 1)
         {
            xb = PointsList[0];
            yb = PointsList[1];
         }
+        else
+        {
+           xb = PointsList[i];
+           i++;
+           yb = PointsList[i];
+           i++;
+        }
 
-        pts++;
-        if (max(ya, yb)<ppy1 || min(ya, yb)>ppy2)
+        if (max(ya, yb) < ppy1 || min(ya, yb) >= ppy2)
         {
            xa = xb;
            ya = yb;
@@ -535,12 +538,10 @@ void traceMaskPolyBoundaries(const int &w, const int &h, float* &PointsList, con
 
         xa = xb;
         ya = yb;
-        if (pts>=PointsCount || i>PointsCount*2)
-           break;
     }
 }
 
-void fillMaskPolyBounds(const int &w, const int &h, float* &PointsList, const int &PointsCount, const int &ppx1, const int &ppy1, const int &ppx2, const int &ppy2, const bool &simpleMode, std::vector<std::vector<int>> &polygonMapEdges) {
+void fillMaskPolyBounds(const int &w, const int &h, const float* PointsList, const int &PointsCount, const int &ppx1, const int &ppy1, const int &ppx2, const int &ppy2, const bool &simpleMode, std::vector<std::vector<int>> &polygonMapEdges) {
     // 1. Pre-calculate active edge counts to avoid reallocations
     std::vector<int> counts(h, 0);
     for (int i = 0; i < PointsCount * 2; i += 2)
@@ -586,7 +587,7 @@ void fillMaskPolyBounds(const int &w, const int &h, float* &PointsList, const in
         if (polygonMapEdges[y].empty())
            continue;
 
-        if (y<=ppy1 || y>=ppy2)
+        if (y < ppy1 || y >= ppy2)
            continue;
 
         std::vector<int>& listu = polygonMapEdges[y];
@@ -606,7 +607,7 @@ void fillMaskPolyBounds(const int &w, const int &h, float* &PointsList, const in
              if (xb==xa)
                 continue;
 
-             if (max(xa,xb)<ppx1 || min(xa,xb)>=ppx2)
+             if (max(xa,xb) < ppx1 || min(xa,xb) >= ppx2)
                 continue;
 
              if (listu.size()>2 && simpleMode==0)
@@ -618,11 +619,10 @@ void fillMaskPolyBounds(const int &w, const int &h, float* &PointsList, const in
              if (xb<xa)
                 swap(xa,xb);
 
-             for (INT64 x = xa; x <= xb; x++)
+             INT64 start_x = max(xa, (INT64)ppx1);
+             INT64 end_x = min(xb, (INT64)(ppx2 - 1));
+             for (INT64 x = start_x; x <= end_x; x++)
              {
-                  if (x<=ppx1 || x>=ppx2)
-                     continue;
-
                   polygonMaskMap[(INT64)(y - polyY) * polyW + x - polyX] = 1;
              }
         }
@@ -631,18 +631,21 @@ void fillMaskPolyBounds(const int &w, const int &h, float* &PointsList, const in
 
 int FillMaskPolygon(int w, int h, float* PointsList, int PointsCount, int ppx1, int ppy1, int ppx2, int ppy2) {
     fnOutputDebug("FillMaskPolygon() invoked; PointsCount=" + std::to_string(PointsCount));
+    if (!PointsList || PointsCount < 3)
+       return 0;
+
     bool goodState = initBoolMaskData();
     if (goodState==0)
        return 0;
 
     int boundMaxY = 0;
-    int boundMinX = INT_MAX;
-    int boundMinY = INT_MAX;
+    
+    std::vector<float> localPoints(PointsCount * 2);
     for ( int i = 0; i < PointsCount*2; i+=2)
     {
-        PointsList[i] = round(PointsList[i]);
-        PointsList[i + 1] = round(PointsList[i + 1]) + polyOffYa - polyOffYb;
-        boundMaxY = max((int)PointsList[i + 1], boundMaxY);
+        localPoints[i] = round(PointsList[i]);
+        localPoints[i + 1] = round(PointsList[i + 1]) + polyOffYa - polyOffYb;
+        boundMaxY = max((int)localPoints[i + 1], boundMaxY);
     }
 
     std::vector<std::vector<int>>  polygonMapEdges;
@@ -655,9 +658,9 @@ int FillMaskPolygon(int w, int h, float* PointsList, int PointsCount, int ppx1, 
     polygonMapEdges.resize(hmax);
     fnOutputDebug("polygonMapEdges reserved");
 
-    traceMaskPolyBoundaries(w, h, PointsList, PointsCount, ppx1, ppy1, ppx2, ppy2, polygonMapEdges, polygonMapMin);
+    traceMaskPolyBoundaries(w, h, localPoints.data(), PointsCount, ppx1, ppy1, ppx2, ppy2, polygonMapEdges, polygonMapMin);
     fnOutputDebug("traceMaskPolyBoundaries done");
-    fillMaskPolyBounds(w, h, PointsList, PointsCount, ppx1, ppy1, ppx2, ppy2, 0, polygonMapEdges);
+    fillMaskPolyBounds(w, h, localPoints.data(), PointsCount, ppx1, ppy1, ppx2, ppy2, 0, polygonMapEdges);
     fnOutputDebug("fillMaskPolyBounds done");
 
     polygonMapEdges.clear();
