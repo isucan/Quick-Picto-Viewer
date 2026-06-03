@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -75938,7 +75938,20 @@ ActPaintBrushNow() {
          If (thisIndex=1)
             oMx := tkX, oMy := tkY
 
+         If (imgBits)
+         {
+            Gdip_UnlockBits(whichBitmap, imgData)
+            imgBits := 0
+         }
+         killQPVscreenImgSection()
+         ViewPortBMPcache := trGdip_DisposeImage(ViewPortBMPcache, 1)
          dummyResizeImageGDIwin()
+         If (validBMP(whichBitmap) && !imgBits)
+         {
+            E1 := trGdip_LockBits(whichBitmap, 0, 0, imgW, imgH, imgPitch, imgBits, imgData, 3, "0x26200A")
+            If E1
+               addJournalEntry(A_ThisFunc "(): ERROR. Relocking failed in paint loop. E1=" E1)
+         }
       }
    }
 
@@ -76487,6 +76500,7 @@ ActPaintBrushLargeNow() {
             oMx := tkX, oMy := tkY
 
          killQPVscreenImgSection()
+         ViewPortBMPcache := trGdip_DisposeImage(ViewPortBMPcache, 1)
          dummyResizeImageGDIwin()
       }
    }
