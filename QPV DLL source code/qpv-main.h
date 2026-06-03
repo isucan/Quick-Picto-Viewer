@@ -270,13 +270,13 @@ struct HSLColor {
 struct RGBAColor {
     int b, g, r, a;
     HSLColor ConvertRGBtoHSL() {
-       const double rf = char_to_float[r];
-       const double gf = char_to_float[g];
-       const double bf = char_to_float[b];
-       const double minu    = min(rf, min(gf, bf));
-       const double maxu    = max(rf, max(gf, bf));
-       const double del_Max = maxu - minu;
-       const double L       = (maxu + minu) / 2.0f;
+        const double rf = char_to_float[r];
+        const double gf = char_to_float[g];
+        const double bf = char_to_float[b];
+        const double minu    = min(rf, min(gf, bf));
+        const double maxu    = max(rf, max(gf, bf));
+        const double del_Max = maxu - minu;
+        const double L       = (maxu + minu) / 2.0f;
         double H = 0.0, S = 0.0;
 
         if (del_Max > 0.0)
@@ -934,23 +934,19 @@ struct RGBA16color {
               nb = b - minu;
               offset = minu;
           }
+
           float denominator = (maxu < 65535.0f ? 65535.0f : maxu) - offset;
-          if (denominator <= 0.0f) denominator = 1.0f;
+          if (denominator <= 0.0f)
+             denominator = 1.0f;
 
-          nr = nr / denominator;
-          ng = ng / denominator;
-          nb = nb / denominator;
-
-          nr = clamp(nr, 0.0f, 1.0f);
-          ng = clamp(ng, 0.0f, 1.0f);
-          nb = clamp(nb, 0.0f, 1.0f);
-
+          nr = clamp(nr / denominator, 0.0f, 1.0f);
+          ng = clamp(ng / denominator, 0.0f, 1.0f);
+          nb = clamp(nb / denominator, 0.0f, 1.0f);
           const int thisLevel = (bright < 0 && altMode == 0 && level > 300) ? level + abs(bright) / 300 : level;
           const double gamma_val = 300.0 / (double)thisLevel;
           r = (int)round(denominator * pow((double)nr, gamma_val) + offset);
           g = (int)round(denominator * pow((double)ng, gamma_val) + offset);
           b = (int)round(denominator * pow((double)nb, gamma_val) + offset);
-
           if (bright < 0 && altMode == 0)
           {
               if (r < -165535) r = -165535;
