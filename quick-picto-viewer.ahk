@@ -1,4 +1,4 @@
-; Script details:
+﻿; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -75491,20 +75491,6 @@ calcBrushSymmetryCoords(tkX, tkY, imgW, imgH, ByRef skX, ByRef skY) {
       skY := tkY
 }
 
-performClrEffectsBrush(whichBitmap, clonescu, tkX, tkY, brushSize, brushu, thisFloatOpacity, Gu) {
-   thisBMP := (BrushToolOverDraw=0 && clonescu) ? clonescu : whichBitmap
-   brushImg := Gdip_CloneBmpPargbArea(A_ThisFunc, thisBMP, Round(tkX - brushSize/2), Round(tkY - brushSize/2), brushSize, brushSize, 0, 0, 1)
-   applyPersonalizedColorsBMP(brushImg, 1, BrushToolBlurStrength, BrushToolApplyColorFX)
-   QPV_SetBitmapAsAlphaChannel(brushImg, brushu, 0)
-   tzGdip_DrawImage(Gu, brushImg, tkX - brushSize//2, tkY - brushSize//2, brushSize, brushSize, 0, 0, brushSize, brushSize, thisFloatOpacity)
-   trGdip_DisposeImage(brushImg, 1)
-}
-
-performEraserBrush(tkX, tkY, brushSize, brushu, thisEraseOpacity, thisEraserMode, whichBitmap, Gu, thisSelectionConstrain, ImgSelPath, clonescu) {
-   If thisSelectionConstrain
-   {
-      ; ToolTip, % testuz "=" otestPos , , , 2
-      brushImg := Gdip_CloneBmpPargbArea(A_ThisFunc, whichBitmap, Round(tkX - brushSize/2), Round(tkY - brushSize/2), brushSize, brushSize, 0, 0, 1)
 ActPaintBrushNow() {
    Critical, on
    Static lastInvoked := 1, prevMX, prevMY, countClicks, HasTested
@@ -75721,7 +75707,6 @@ ActPaintBrushNow() {
    smudgeAccDist := 0
    pdx := pdy := 0
    ShowTheImage("set-prev", imgPath)
-   setWhileLoopExec(1)
    DllCall("qpvmain.dll\ResetBrushOpacityMap")
 
    If (BrushToolType=4) ; eraser brush
@@ -75732,13 +75717,12 @@ ActPaintBrushNow() {
    thisEffectLight := (BrushToolApplyColorFX=1) ? PasteInPlaceLight : 0
    thisEffectGamma := (BrushToolApplyColorFX=1) ? PasteInPlaceGamma : 0
    thisEffectBlur  := BrushToolBlurStrength
+   imgBits := imgPitch := 0
    plza := A_TickCount
-
-   imgBits := 0
-   imgPitch := 0
    If validBMP(whichBitmap)
       E1 := trGdip_LockBits(whichBitmap, 0, 0, imgW, imgH, imgPitch, imgBits, imgData, 3, 0x26200A)
 
+   setWhileLoopExec(1)
    While, (determineLClickState()=1 || A_Index<2)
    {
       If (thisOpacity<0.005 || brushSize<1)
