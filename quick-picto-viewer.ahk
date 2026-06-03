@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -79569,7 +79569,7 @@ QPV_ShowImgonGui(newW, newH, mainWidth, mainHeight, usePrevious, imgPath, ForceI
     If (CountGIFframes>1 && !AnyWindowOpen && animGIFsSupport=1 && prevAnimGIFwas!=imgPath)
        mustPlayAnim := 1
 
-    liveBrushModeUpdates := (liveDrawingBrushTool=1 && whileLoopExec=1 && AnyWindowOpen) ? 1 : 0
+    liveBrushModeUpdates := (liveDrawingBrushTool=1 && whileLoopExec=1) ? 1 : 0
     If (mustPlayAnim=1 || IMGresizingMode=4 && allowFreeIMGpanning=1 || liveBrushModeUpdates=1)
     {
        ; with (IMGresizingMode=4 && allowFreeIMGpanning=1), everything goes bonkers
