@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -75989,18 +75989,19 @@ DrawPaintBrushNowStep:
 
    colorARGB := "0x" Format("{1:x}", 255) startToolColor
 
-   lockX := Max(0, Floor(cur_tkX - brushSize - 5))
-   lockY := Max(0, Floor(cur_tkY - brushSize - 5))
-   lockW := Min(imgW - lockX, Ceil(brushSize * 2 + 10))
-   lockH := Min(imgH - lockY, Ceil(brushSize * 2 + 10))
+   dllRad := Round((texW > 0 ? texW // 2 : brushSize // 2) + Abs(thisBulgePinchFactor) + 10)
+   lockX := Round(Max(0, Floor(cur_tkX - dllRad)))
+   lockY := Round(Max(0, Floor(cur_tkY - dllRad)))
+   lockW := Round(Min(imgW - lockX, Ceil(dllRad * 2)))
+   lockH := Round(Min(imgH - lockY, Ceil(dllRad * 2)))
 
    If (lockW > 0 && lockH > 0)
    {
       E1 := trGdip_LockBits(whichBitmap, lockX, lockY, lockW, lockH, imgPitch, imgBits, imgData, 3, "0x26200A")
       If !E1
       {
-         dll_imgBits := imgBits - lockY * imgPitch - lockX * 4
-         rr := DllCall("qpvmain.dll&PaintBrushLarge"
+         dll_imgBits := Round(imgBits - lockY * imgPitch - lockX * 4)
+         rr := DllCall("qpvmain.dll\PaintBrushLarge"
             , "UPtr", dll_imgBits
             , "int", imgW
             , "int", imgH
@@ -76055,15 +76056,15 @@ Gdip_GetPixelColorDirect(bits, x, y, imgW, imgH, pitch, bpp) {
 }
 
 getPixelColorAvgGdip(pBitmap, kX, kY, imgW, imgH, pitch, bpp, startToolColor) {
-   lockX := Max(0, Floor(kX - 2))
-   lockY := Max(0, Floor(kY - 2))
-   lockW := Min(imgW - lockX, 5)
-   lockH := Min(imgH - lockY, 5)
+   lockX := Round(Max(0, Floor(kX - 2)))
+   lockY := Round(Max(0, Floor(kY - 2)))
+   lockW := Round(Min(imgW - lockX, 5))
+   lockH := Round(Min(imgH - lockY, 5))
    If (lockW > 0 && lockH > 0)
    {
       If !trGdip_LockBits(pBitmap, lockX, lockY, lockW, lockH, pitch, imgBits, imgData, 3, "0x26200A")
       {
-         bits := imgBits - lockY * pitch - lockX * (bpp // 8)
+         bits := Round(imgBits - lockY * pitch - lockX * (bpp // 8))
          coloruA := Gdip_GetPixelColorDirect(bits, kX, kY, imgW, imgH, pitch, bpp)
          coloruB := Gdip_GetPixelColorDirect(bits, kX + 2, kY + 2, imgW, imgH, pitch, bpp)
          coloruD := Gdip_GetPixelColorDirect(bits, kX - 2, kY - 2, imgW, imgH, pitch, bpp)
