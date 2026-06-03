@@ -1,4 +1,4 @@
-; Script details:
+﻿; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -5162,8 +5162,9 @@ panIMGonScrollBar(doX, doY) {
          prevState := thisState
          dummyResizeImageGDIwin()
       }
+
       If (thisIndex<4)
-        Sleep, 70
+         Sleep, 70
    }
 
    setWhileLoopExec(0)
@@ -75541,27 +75542,24 @@ ActPaintBrushNow() {
    Random, randomFactor, -950, 950
    randomFactor := Randomizer(-950, 950, 2, 1)
    prevState := "a"
+   whichBitmap := useGdiBitmap()
+   imgBits := imgPitch := 0
+   trGdip_GetImageDimensions(whichBitmap, imgW, imgH)
+   If validBMP(whichBitmap)
+   {
+      E1 := trGdip_LockBits(whichBitmap, 0, 0, imgW, imgH, imgPitch, imgBits, imgData, 3, "0x26200A")
+      If E1
+      {
+         showTOOLtip("ERROR: Unable to lock bitmap data. Failure occured in " A_ThisFunc "()")
+         SoundBeep 300, 100
+         SetTimer, RemoveTooltip, % -msgDisplayTime
+         Return
+      }
+   }
+
    liveDrawingBrushTool := 1
    interfaceThread.ahkassign("FloodFillSelectionAdj", FloodFillSelectionAdj)
    interfaceThread.ahkassign("liveDrawingBrushTool", liveDrawingBrushTool)
-   whichBitmap := useGdiBitmap()
-   If (whichBitmap=UserMemBMP)
-   {
-      If (UserMemBMP=gdiBitmap)
-         addJournalEntry(A_ThisFunc "(): ERROR. Illegal inequality. UserMemBMP=gdiBitmap" )
-
-      If validBMP(gdiBitmap)
-      {
-         addJournalEntry(A_ThisFunc "(): ERROR. Illogical context. useGdiBitmap() returns UserMemBMP when gdiBitmap is valid!?" )
-         trGdip_DisposeImage(gdiBitmap)
-      }
-
-      gdiBitmap := trGdip_CloneBitmap(A_ThisFunc, whichBitmap)
-      UserMemBMP := trGdip_DisposeImage(UserMemBMP)
-      whichBitmap := gdiBitmap
-   }
-
-   trGdip_GetImageDimensions(whichBitmap, imgW, imgH)
    kpi := (BrushToolType < 3) ? 1 : 0
    thisUseSecondaryColor := (kpi=1) ? BrushToolUseSecondaryColor : 0
    If (GetKeyState("Ctrl", "P") && kpi=1)
@@ -75716,11 +75714,7 @@ ActPaintBrushNow() {
    thisEffectLight := (BrushToolApplyColorFX=1) ? PasteInPlaceLight : 0
    thisEffectGamma := (BrushToolApplyColorFX=1) ? PasteInPlaceGamma : 0
    thisEffectBlur  := BrushToolBlurStrength
-   imgBits := imgPitch := 0
    plza := A_TickCount
-   If validBMP(whichBitmap)
-      E1 := trGdip_LockBits(whichBitmap, 0, 0, imgW, imgH, imgPitch, imgBits, imgData, 3, 0x26200A)
-
    setWhileLoopExec(1)
    While, (determineLClickState()=1 || A_Index<2)
    {
@@ -75944,8 +75938,6 @@ ActPaintBrushNow() {
          If (thisIndex=1)
             oMx := tkX, oMy := tkY
 
-         killQPVscreenImgSection()
-         ViewPortBMPcache := trGdip_DisposeImage(ViewPortBMPcache, 1)
          dummyResizeImageGDIwin()
       }
    }
@@ -76486,6 +76478,7 @@ ActPaintBrushLargeNow() {
             If (Xgood=1 && Ygood=1 && A_Index>1 || stepu<=1 && BrushToolType>5 || brushToolStepping=0 && brushSize>1 || BrushToolType>=7 || brushSize<1 || thisOpacity<0.005)
                Break
          }
+
          prevState := thisState
          prevMX := kX
          prevMY := kY
@@ -76494,7 +76487,6 @@ ActPaintBrushLargeNow() {
             oMx := tkX, oMy := tkY
 
          killQPVscreenImgSection()
-         ViewPortBMPcache := trGdip_DisposeImage(ViewPortBMPcache, 1)
          dummyResizeImageGDIwin()
       }
    }
@@ -79510,7 +79502,11 @@ drawVPpartialIMGsection(brickVPx, brickVPy, brickVPw, brickVPh, DestPosX, DestPo
     brickIMGw := brickIMGxz - brickIMGx
     brickIMGh := brickIMGyz - brickIMGy
     If (simpleMode=1)
-       Return trGdip_DrawImage(A_ThisFunc, Gu, whichBitmap, brickVPx, brickVPy, brickVPw, brickVPh, brickIMGx, brickIMGy, brickIMGw, brickIMGh, clrMatrix, 2, imageAttribs)
+    {
+       r1 := trGdip_DrawImage(A_ThisFunc, Gu, whichBitmap, brickVPx, brickVPy, brickVPw, brickVPh, brickIMGx, brickIMGy, brickIMGw, brickIMGh, clrMatrix, 2, imageAttribs)
+       if r1
+          fnOutputDebug("an error occured drawing bitmap in " A_ThisFunc)
+    }
 
     ; kBitmap := Gdip_CloneBmpPargbArea(A_ThisFunc, whichBitmap, brickIMGx, brickIMGy, brickIMGw, brickIMGh, 0, 0, 1, 0)
     If (brickVPx<dpX)
@@ -79558,7 +79554,11 @@ drawVPpartialIMGsection(brickVPx, brickVPy, brickVPw, brickVPh, DestPosX, DestPo
           r1 := trGdip_DrawImage(A_ThisFunc, Gu, kBitmap, brickVPx, brickVPy, brickVPw, brickVPh, 0, 0, brickIMGw, brickIMGh, clrMatrix, 2, imageAttribs)
           trGdip_DisposeImage(kBitmap)
        }
-    }
+       if r1
+          fnOutputDebug("an error occured drawing bitmap in " A_ThisFunc)
+    } else 
+       fnOutputDebug("invalid bitmap after resize, an error occured in " A_ThisFunc)
+
     ; ToolTip, % brickVPx "=" brickVPy "`n" brickVPw "==" brickVPh , , , 2
 }
 
@@ -79946,7 +79946,7 @@ QPV_ShowImgonGui(newW, newH, mainWidth, mainHeight, usePrevious, imgPath, ForceI
        wasVPcached := 1
     }
 
-    ; ToolTip, % "l=" r2 "=" kBitmap "=" ViewPortBMPcache "=" gdipLastError "=" glHbitmap , , , 2
+    ; ToolTip, % wasVPcached "l=" r2 "=" kBitmap "=" ViewPortBMPcache "=" gdipLastError "=" glHbitmap , , , 2
     confirmTexBGR := isVarEqualTo(vpIMGrotation, 0, 90, 180, 270) && (usrTextureBGR=1 && gdiAmbientalTexBrush && (IMGentirelylargerThanVP!=1 || allowFreeIMGpanning=1 && IMGresizingMode=4)) ? 1 : 0
     If (FlipImgV=1 || FlipImgH=1 || pEffect || imageAttribs || wasVPcached=1 || isVarEqualTo(UserVPalphaBgrStyle, 2, 4, 5) && currIMGdetails.HasAlpha=1)
     {
@@ -80018,6 +80018,9 @@ QPV_ShowImgonGui(newW, newH, mainWidth, mainHeight, usePrevious, imgPath, ForceI
     Gdip_ResetWorldTransform(glPG)
     If (minimizeMemUsage!=1 && slideShowRunning=1 && doSlidesTransitions=1 && slideShowDelay>950 && validBMP(GDIfadeVPcache))
        imageHasFaded := performFadeTransition(imgPath, mustPlayAnim)
+
+If liveBrushModeUpdates ; for testing live brush mode
+          r1 := trGdip_DrawImage(A_ThisFunc, glPG, gdiBitmap, 1, 1, 300, 200)
 
     whichWin := (imgEditPanelOpened=1 && AnyWindowOpen!=10) ? hGDIthumbsWin : hGDIwin
     r2 := doLayeredWinUpdate(A_ThisFunc, whichWin, glHDC)
