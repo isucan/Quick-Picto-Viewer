@@ -44138,7 +44138,7 @@ updateUIbrushTool() {
       actu := (BrushToolType=3 || BrushToolType=5) ? "SettingsGUIA: Enable" : "SettingsGUIA: Disable"
       GuiControl, % actu, BrushToolApplyColorFX
 
-      actu2 := (BrushToolApplyColorFX=1 && (cloneraFX=1 || BrushToolType=5)) ? 1 : 0
+      actu2 := (BrushToolApplyColorFX=1 && (BrushToolType=3 || BrushToolType=5)) ? 1 : 0
       uiSlidersArray["PasteInPlaceLight", 10] := actu2
       uiSlidersArray["PasteInPlaceGamma", 10] := actu2
       uiSlidersArray["PasteInPlaceHue", 10] := actu2
@@ -76608,9 +76608,9 @@ ActPaintBrushLargeNow() {
    Return
 
 DrawPaintBrushLargeStep:
-   If (BrushToolType = 3)
+   If (BrushToolType=3)
    {
-      If (BrushToolDynamicCloner = 1)
+      If (BrushToolDynamicCloner=1)
       {
          cur_offX := cur_tkX - tkX + oMx - tinyPrevAreaCoordX
          cur_offY := cur_tkY - tkY + oMy - tinyPrevAreaCoordY

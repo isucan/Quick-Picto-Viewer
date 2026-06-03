@@ -8294,9 +8294,9 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     float factorContrast = 0.0f;
     float fiContra = 0.0f;
     float saturateFactor = 0.0f;
-    if (brushType == 5)
+    if (brushType==5 || brushType==3)
     {
-        // Effects brush
+        // Effects and cloner brushes
         // Prepare LUT tables as in AdjustImageColorsPrecise()
         if (brushBright < 0)
         {
@@ -8327,7 +8327,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
         }
 
         saturateFactor = (brushSat < 0) ? (65535.0f - abs(brushSat)) / 131070.0f : 0.5f + brushSat / 131070.0f;
-        if (effectBlur > 2)
+        if (effectBlur>2 && brushType==5)
         {
             int radius = effectBlur;
             roiStartX = clamp(startX - radius, 0, imgW - 1);
@@ -8638,10 +8638,28 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 int s_iy = imgH - 1 - srcY;
                 unsigned char* srcPixel = srcData + (INT64)s_iy * srcPitch + srcX * bytesPerPixel;
 
-                srcB = srcPixel[0];
-                srcG = srcPixel[1];
-                srcR = srcPixel[2];
-                srcA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
+                const int effB = srcPixel[0];
+                const int effG = srcPixel[1];
+                const int effR = srcPixel[2];
+                const int effA = (bytesPerPixel == 4) ? srcPixel[3] : 255;
+
+                RGBA16color pixel = { char_to_int[effB], char_to_int[effG], char_to_int[effR], char_to_int[effA] };
+                if (brushBright!=0)
+                   pixel.brightness(brushBright, 1, 0, fiBright);
+
+                if (brushContra!=0)
+                   pixel.contrast(brushContra, 0, linearGamma, factorContrast, 0, fiContra);
+
+                if (brushHue!=0)
+                   pixel.hueRotate(brushHue, saturateFactor, 1, brushSat);
+
+                if (brushSat!=0)
+                   pixel.saturation(brushSat, 1, linearGamma, saturateFactor);
+
+                srcB = int_to_char[pixel.b];
+                srcG = int_to_char[pixel.g];
+                srcR = int_to_char[pixel.r];
+                srcA = int_to_char[pixel.a];
             } else if (brushType == 4)
             {
                 // Eraser brush
