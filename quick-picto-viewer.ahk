@@ -1,4 +1,4 @@
-; Script details:
+﻿; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -75993,14 +75993,13 @@ DrawPaintBrushNowStep:
    If (BrushToolType>5)
       dllRad += Abs(thisBulgePinchFactor) + 10
    Else If (BrushToolType=5)
-      dllRad += thisEffectBlur*2 + brushSize + 10
+      dllRad += thisEffectBlur + 10
 
    lockX := Round(Max(0, Floor(cur_tkX - dllRad)))
    lockY := Round(Max(0, Floor(cur_tkY - dllRad)))
    lockW := Round(Min(imgW - lockX, Ceil(dllRad * 2)))
    lockH := Round(Min(imgH - lockY, Ceil(dllRad * 2)))
-
-   If (lockW > 0 && lockH > 0)
+   If (lockW> 0 && lockH>0)
    {
       E1 := trGdip_LockBits(whichBitmap, lockX, lockY, lockW, lockH, imgPitch, imgBits, imgData, 3, "0x26200A")
       If !E1
@@ -76595,7 +76594,8 @@ DrawPaintBrushLargeStep:
       , "int", texH
       , "int", texPitch
       , "int", texBpp
-      , "int", BrushToolOverDraw)
+      , "int", BrushToolOverDraw
+      , "int", 0, "int", 0, "int", 0, "int", 0)
   If !rr 
      fnOutputDebug("An error occured in calling PaintBrushLarge() from the QPV DLL.")
   Return
