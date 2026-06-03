@@ -72,11 +72,11 @@ inline bool inRange(const int &low, const int &high, const int &x) {
 
 int inline weighTwoValues(float A, float B, float w) {
     if (w >= 1.0f)
-       return (int)round(A);
+       return A;
     else if (w <= 0.0f)
-       return (int)round(B);
+       return B;
     else
-       return (int)round(w * (A - B) + B);
+       return (w * (A - B) + B);
 }
 
 float inline weighTwoValues(float A, float B, float w, int r) {
@@ -85,7 +85,7 @@ float inline weighTwoValues(float A, float B, float w, int r) {
     else if (w <= 0)
        return B;
     else
-       return w * (A - B) + B;
+       return (w * (A - B) + B);
 }
 
 static unsigned short gamma_to_linear[256];
