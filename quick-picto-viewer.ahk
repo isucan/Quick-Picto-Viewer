@@ -1,4 +1,4 @@
-; Script details:
+﻿; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -75530,8 +75530,6 @@ ActPaintBrushNow() {
       Return
    }
 
-   interfaceThread.ahkassign("FloodFillSelectionAdj", FloodFillSelectionAdj)
-   interfaceThread.ahkassign("liveDrawingBrushTool", liveDrawingBrushTool)
    vpWinClientSize(mainWidth, mainHeight)
    createGDIPcanvas(mainWidth, mainHeight)
    GetMouseCoord2wind(PVhwnd, mX, mY)
@@ -75544,6 +75542,8 @@ ActPaintBrushNow() {
    randomFactor := Randomizer(-950, 950, 2, 1)
    prevState := "a"
    liveDrawingBrushTool := 1
+   interfaceThread.ahkassign("FloodFillSelectionAdj", FloodFillSelectionAdj)
+   interfaceThread.ahkassign("liveDrawingBrushTool", liveDrawingBrushTool)
    whichBitmap := useGdiBitmap()
    If (whichBitmap=UserMemBMP)
    {
@@ -75708,7 +75708,6 @@ ActPaintBrushNow() {
    pdx := pdy := 0
    ShowTheImage("set-prev", imgPath)
    DllCall("qpvmain.dll\ResetBrushOpacityMap")
-
    If (BrushToolType=4) ; eraser brush
       currIMGdetails.HasAlpha := 1
 
@@ -75939,6 +75938,7 @@ ActPaintBrushNow() {
          }
 
          prevState := thisState
+         zeitSillyPrevent := A_TickCount
          prevMX := kX
          prevMY := kY
          If (thisIndex=1)
@@ -76487,6 +76487,7 @@ ActPaintBrushLargeNow() {
          prevState := thisState
          prevMX := kX
          prevMY := kY
+         zeitSillyPrevent := A_TickCount
          If (thisIndex=1)
             oMx := tkX, oMy := tkY
 
