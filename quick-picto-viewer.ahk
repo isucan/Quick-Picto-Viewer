@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -75996,6 +75996,9 @@ DrawPaintBrushNowStep:
       }
    }
 
+   dll_tkY := imgH - 1 - cur_tkY
+   dll_offY := -cur_offY
+
    colorARGB := "0x" Format("{1:x}", 255) startToolColor
    rr := DllCall("qpvmain.dll\PaintBrushLarge"
       , "UPtr", imgBits
@@ -76005,7 +76008,7 @@ DrawPaintBrushNowStep:
       , "int", 32
       , "int", BrushToolType
       , "double", cur_tkX
-      , "double", cur_tkY
+      , "double", dll_tkY
       , "int", brushSize
       , "int", thisToolSoftness
       , "double", thisToolAngle
@@ -76014,7 +76017,7 @@ DrawPaintBrushNowStep:
       , "int", cur_opacity
       , "int", BrushToolBlendMode - 1
       , "double", cur_offX
-      , "double", cur_offY
+      , "double", dll_offY
       , "UPtr", cloneBits
       , "int", clonePitch
       , "int", BrushToolEraserRestore
