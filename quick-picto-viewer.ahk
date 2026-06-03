@@ -75639,10 +75639,6 @@ ActPaintBrushNow() {
       RemoveTooltip()
    }
 
-   clonescu := 0
-   If (BrushToolType > 1 || BrushToolOverDraw = 0)
-      clonescu := trGdip_CloneBitmap(A_ThisFunc, whichBitmap)
-
    thisWet := 0.79 + (21 - thisWetness)/100
    hFIFtex := texBits := 0
    texPitch := texBpp := 0
@@ -75961,10 +75957,6 @@ ActPaintBrushNow() {
    setWhileLoopExec(0)
    DllCall("qpvmain.dll\discardFilledPolygonCache", "int", 0)
    DllCall("qpvmain.dll\ResetBrushOpacityMap")
-
-   If validBMP(clonescu)
-      trGdip_DisposeImage(clonescu, 1)
-
    If hFIFtex
       FreeImage_UnLoad(hFIFtex)
 
@@ -80026,9 +80018,6 @@ QPV_ShowImgonGui(newW, newH, mainWidth, mainHeight, usePrevious, imgPath, ForceI
     Gdip_ResetWorldTransform(glPG)
     If (minimizeMemUsage!=1 && slideShowRunning=1 && doSlidesTransitions=1 && slideShowDelay>950 && validBMP(GDIfadeVPcache))
        imageHasFaded := performFadeTransition(imgPath, mustPlayAnim)
-
-If liveBrushModeUpdates ; for testing live brush mode
-          r1 := trGdip_DrawImage(A_ThisFunc, glPG, gdiBitmap, 1, 1, 300, 200)
 
     whichWin := (imgEditPanelOpened=1 && AnyWindowOpen!=10) ? hGDIthumbsWin : hGDIwin
     r2 := doLayeredWinUpdate(A_ThisFunc, whichWin, glHDC)
