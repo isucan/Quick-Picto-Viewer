@@ -75995,19 +75995,10 @@ DrawPaintBrushNowStep:
    Else If (BrushToolType=5)
       dllRad += thisEffectBlur*2 + brushSize + 10
 
-   If (BrushToolType = 5)
-   {
-      lockX := 0
-      lockY := 0
-      lockW := imgW
-      lockH := imgH
-   } Else
-   {
-      lockX := Round(Max(0, Floor(cur_tkX - dllRad)))
-      lockY := Round(Max(0, Floor(cur_tkY - dllRad)))
-      lockW := Round(Min(imgW - lockX, Ceil(dllRad * 2)))
-      lockH := Round(Min(imgH - lockY, Ceil(dllRad * 2)))
-   }
+   lockX := Round(Max(0, Floor(cur_tkX - dllRad)))
+   lockY := Round(Max(0, Floor(cur_tkY - dllRad)))
+   lockW := Round(Min(imgW - lockX, Ceil(dllRad * 2)))
+   lockH := Round(Min(imgH - lockY, Ceil(dllRad * 2)))
 
    If (lockW > 0 && lockH > 0)
    {
@@ -76050,7 +76041,11 @@ DrawPaintBrushNowStep:
             , "int", texH
             , "int", texPitch
             , "int", texBpp
-            , "int", BrushToolOverDraw)
+            , "int", BrushToolOverDraw
+            , "int", lockX
+            , "int", lockY
+            , "int", lockW
+            , "int", lockH)
          If !rr
             fnOutputDebug("An error occured in calling PaintBrushLarge() from the QPV DLL.")
          Gdip_UnlockBits(whichBitmap, imgData)

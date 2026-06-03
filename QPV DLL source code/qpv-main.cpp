@@ -8197,7 +8197,11 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int texH,                // Texture height
     int texPitch,            // Texture stride
     int texBpp,              // Texture bits-per-pixel
-    int brushOverDraw        // BrushToolOverDraw (0 or 1)
+    int brushOverDraw,       // BrushToolOverDraw (0 or 1)
+    int lockX = 0,
+    int lockY = 0,
+    int lockW = 0,
+    int lockH = 0
 ) {
     if (!imgData || imgW <= 0 || imgH <= 0 || pitch <= 0 || brushSize <= 0)
     {
@@ -8343,12 +8347,17 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 int srcPitch = cloneData ? clonePitch : pitch;
                 int clr = (bytesPerPixel == 4) ? CV_8UC4 : CV_8UC3;
 
-                cv::Mat srcMat(imgH, imgW, clr, srcData, srcPitch);
+                int use_lockX = (lockW > 0 && !cloneData) ? lockX : 0;
+                int use_lockY = (lockH > 0 && !cloneData) ? lockY : 0;
+                int use_lockW = (lockW > 0 && !cloneData) ? lockW : imgW;
+                int use_lockH = (lockH > 0 && !cloneData) ? lockH : imgH;
+
+                cv::Mat srcMat(use_lockH, use_lockW, clr, srcData + (INT64)use_lockY * srcPitch + use_lockX * bytesPerPixel, srcPitch);
                 // Translate the vertical range [roiStartY, roiEndY] from bottom-up image coordinates 
                 // to standard memory coordinates.
                 // py = roiStartY (bottom row) -> memory row = imgH - 1 - roiStartY (largest memory index)
                 // py = roiEndY (top row) -> memory row = imgH - 1 - roiEndY (smallest memory index)
-                cv::Rect roi(roiStartX, imgH - 1 - roiEndY, roiW, roiH);
+                cv::Rect roi(roiStartX - use_lockX, imgH - 1 - roiEndY - use_lockY, roiW, roiH);
                 cv::Mat srcRoi = srcMat(roi);
 
                 int kernelSize = 2 * radius + 1;
