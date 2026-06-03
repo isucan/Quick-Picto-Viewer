@@ -76661,7 +76661,7 @@ DrawPaintBrushLargeStep:
   If !rr 
      fnOutputDebug("An error occured in calling PaintBrushLarge() from the QPV DLL.")
   Return
-}
+} ; // ActPaintBrushLargeNow()
 
 FreeImage_GetPixelColorDirect(hFIF, x, y) {
    FreeImage_GetImageDimensions(hFIF, imgW, imgH)
