@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -75494,7 +75494,7 @@ calcBrushSymmetryCoords(tkX, tkY, imgW, imgH, ByRef skX, ByRef skY) {
 
 ActPaintBrushNow() {
    Critical, on
-   Static lastInvoked := 1, prevMX, prevMY, countClicks, HasTested
+   Static lastInvoked := 1, prevMX, prevMY
 
    If (A_TickCount - lastOtherWinClose<450)
       Return
@@ -75539,7 +75539,6 @@ ActPaintBrushNow() {
    imgPath := getIDimage(currentFileIndex)
    thisZeit := A_TickCount - 100
    thisIndex := 0
-   Random, randomFactor, -950, 950
    randomFactor := Randomizer(-950, 950, 2, 1)
    prevState := "a"
    whichBitmap := useGdiBitmap()
@@ -75568,7 +75567,6 @@ ActPaintBrushNow() {
       thisUseSecondaryColor := !BrushToolUseSecondaryColor
 
    o_startToolColor := startToolColor := (thisUseSecondaryColor=1) ? BrushToolBcolor : BrushToolAcolor
-   thisMainOpacity := (thisUseSecondaryColor=1) ? BrushToolBopacity : BrushToolAopacity
    MouseCoords2Image(mX, mY, 0, prevDestPosX, prevDestPosY, prevResizedVPimgW, prevResizedVPimgH, kX, kY, whichBitmap, 1, imgW, imgH)
    If (BrushToolWetness=21 && BrushToolType<3)
    {
@@ -75626,7 +75624,6 @@ ActPaintBrushNow() {
       thisToolAspectRatio := clampInRange(BrushToolAspectRatio + gR, -100, 100)
    }
 
-   advancedSoftBrush := (BrushToolType=2 && (BrushToolOverDraw=0 || BrushToolBlendMode>1)) ? 1 : 0
    thisOpacity := (thisUseSecondaryColor=1) ? BrushToolBopacity : BrushToolAopacity
    useSelArea := 0
    If (editingSelectionNow=1 && BrushToolOutsideSelection>1)
@@ -75821,20 +75818,16 @@ ActPaintBrushNow() {
          tkX := prevMX
          tkY := prevMY
          thisIndex++
-         avgDistX := (distX + distStepX)//2
-         avgDistY := (distY + distStepY)//2
          Loop
          {
             Xgood := Ygood := 0
             If (dirX=1)
             {
-               smudgeX := clampInRange(avgDistX//2, 0, thisBulgePinchFactor)
                tkX := clampInRange(tkX + distStepX, prevMX, kX)
                If (tkX>=kX)
                   Xgood := 1
             } Else
             {
-               smudgeX := - clampInRange(avgDistX//2, 0, thisBulgePinchFactor)
                tkX := clampInRange(tkX - distStepX, kX, prevMX)
                If (tkX<=kX)
                   Xgood := 1
@@ -75842,13 +75835,11 @@ ActPaintBrushNow() {
 
             If (dirY=1)
             {
-               smudgeY := clampInRange(avgDistY//2, 0, thisBulgePinchFactor)
                tkY := clampInRange(tkY + distStepY, prevMY, kY)
                If (tkY>=kY)
                   Ygood := 1
             } Else
             {
-               smudgeY := - clampInRange(avgDistY//2, 0, thisBulgePinchFactor)
                tkY := clampInRange(tkY - distStepY, kY, prevMY)
                If (tkY<=kY)
                   Ygood := 1
@@ -76098,7 +76089,7 @@ getPixelColorAvgGdip(pBitmap, kX, kY, imgW, imgH, pitch, bpp, startToolColor) {
 
 ActPaintBrushLargeNow() {
    Critical, on
-   Static lastInvoked := 1, prevMX, prevMY, countClicks
+   Static lastInvoked := 1, prevMX, prevMY
 
    If (A_TickCount - lastOtherWinClose<450)
       Return
@@ -76120,8 +76111,6 @@ ActPaintBrushLargeNow() {
       Return
    }
 
-   canApplyFXa := (PasteInPlaceHue!=0 || PasteInPlaceSaturation!=0) && (BrushToolApplyColorFX=1) ? 1 : 0
-   canApplyFXb := (PasteInPlaceLight!=0 || PasteInPlaceGamma!=0) && (BrushToolApplyColorFX=1) ? 1 : 0
    interfaceThread.ahkassign("FloodFillSelectionAdj", FloodFillSelectionAdj)
    interfaceThread.ahkassign("liveDrawingBrushTool", liveDrawingBrushTool)
    vpWinClientSize(mainWidth, mainHeight)
@@ -76140,7 +76129,6 @@ ActPaintBrushLargeNow() {
 
    o_startToolColor := startToolColor := (thisUseSecondaryColor=1) ? BrushToolBcolor : BrushToolAcolor
    ; o_startToolColor := startToolColor := RandomizeBrushColor(startToolColor)
-   thisMainOpacity := (thisUseSecondaryColor=1) ? BrushToolBopacity : BrushToolAopacity
    MouseCoords2Image(mX, mY, 0, prevDestPosX, prevDestPosY, prevResizedVPimgW, prevResizedVPimgH, kX, kY, 0, 1, imgW, imgH)
    If (BrushToolWetness=21 && BrushToolType<3)
    {
@@ -76198,13 +76186,12 @@ ActPaintBrushLargeNow() {
       thisToolAspectRatio := clampInRange(BrushToolAspectRatio + gR, -100, 100)
    }
 
-   advancedSoftBrush := (BrushToolType=2 && (BrushToolOverDraw=0 || BrushToolBlendMode>1)) ? 1 : 0
    thisOpacity := (thisUseSecondaryColor=1) ? BrushToolBopacity : BrushToolAopacity
-   hFIFimgA := useSelArea := 0
+   useSelArea := 0
    cloneBits := clonePitch := 0
    defineRelativeSelCoords(imgW, imgH)
    objuSel := InitHugeImgSelPath(0, imgW, imgH)
-   zrr := recordUndoLevelHugeImagesNow(objuSel.bX1, objuSel.bY1, objuSel.bImgSelW, objuSel.bImgSelH)
+   recordUndoLevelHugeImagesNow(objuSel.bX1, objuSel.bY1, objuSel.bImgSelW, objuSel.bImgSelH)
    If (editingSelectionNow=1 && BrushToolOutsideSelection>1)
    {
       useSelArea := 1
@@ -76396,21 +76383,17 @@ ActPaintBrushLargeNow() {
          tkX := prevMX
          tkY := prevMY
          thisIndex++
-         avgDistX := (distX + distStepX)//2
-         avgDistY := (distY + distStepY)//2
          Loop
          {
             ; loop interim brush steps
             Xgood := Ygood := 0
             If (dirX=1)
             {
-               smudgeX := clampInRange(avgDistX//2, 0, thisBulgePinchFactor)
                tkX := clampInRange(tkX + distStepX, prevMX, kX)
                If (tkX>=kX)
                   Xgood := 1
             } Else
             {
-               smudgeX := - clampInRange(avgDistX//2, 0, thisBulgePinchFactor)
                tkX := clampInRange(tkX - distStepX, kX, prevMX)
                If (tkX<=kX)
                   Xgood := 1
@@ -76418,13 +76401,11 @@ ActPaintBrushLargeNow() {
 
             If (dirY=1)
             {
-               smudgeY := clampInRange(avgDistY//2, 0, thisBulgePinchFactor)
                tkY := clampInRange(tkY + distStepY, prevMY, kY)
                If (tkY>=kY)
                   Ygood := 1
             } Else
             {
-               smudgeY := - clampInRange(avgDistY//2, 0, thisBulgePinchFactor)
                tkY := clampInRange(tkY - distStepY, kY, prevMY)
                If (tkY<=kY)
                   Ygood := 1
