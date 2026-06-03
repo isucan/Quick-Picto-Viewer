@@ -75939,22 +75939,10 @@ ActPaintBrushNow() {
          If (thisIndex=1)
             oMx := tkX, oMy := tkY
 
-         If (imgBits)
-         {
-            Gdip_UnlockBits(paintBitmap, imgData)
-            imgBits := 0
-         }
          gdiBitmap := trGdip_DisposeImage(gdiBitmap, 1)
          gdiBitmap := trGdip_CloneBitmap(A_ThisFunc, paintBitmap)
-         killQPVscreenImgSection()
          ViewPortBMPcache := trGdip_DisposeImage(ViewPortBMPcache, 1)
          dummyResizeImageGDIwin()
-         If (validBMP(paintBitmap) && !imgBits)
-         {
-            E1 := trGdip_LockBits(paintBitmap, 0, 0, imgW, imgH, imgPitch, imgBits, imgData, 3, "0x26200A")
-            If E1
-               addJournalEntry(A_ThisFunc "(): ERROR. Relocking failed in paint loop. E1=" E1)
-         }
       }
    }
 
@@ -75970,7 +75958,6 @@ ActPaintBrushNow() {
    }
 
    paintBitmap := trGdip_DisposeImage(paintBitmap, 1)
-
    setWhileLoopExec(0)
    DllCall("qpvmain.dll\discardFilledPolygonCache", "int", 0)
    DllCall("qpvmain.dll\ResetBrushOpacityMap")
