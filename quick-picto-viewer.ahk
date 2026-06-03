@@ -75547,8 +75547,7 @@ ActPaintBrushNow() {
    trGdip_GetImageDimensions(whichBitmap, imgW, imgH)
    If validBMP(whichBitmap)
    {
-      paintBitmap := trGdip_CloneBitmap(A_ThisFunc, whichBitmap)
-      E1 := trGdip_LockBits(paintBitmap, 0, 0, imgW, imgH, imgPitch, imgBits, imgData, 3, "0x26200A")
+      E1 := trGdip_LockBits(whichBitmap, 0, 0, imgW, imgH, imgPitch, imgBits, imgData, 3, "0x26200A")
       If E1
       {
          showTOOLtip("ERROR: Unable to lock bitmap data. Failure occured in " A_ThisFunc "()")
@@ -75814,6 +75813,7 @@ ActPaintBrushNow() {
             pdx := cdx
             pdy := cdy
          }
+
          distStepX := (maxDistuK=1) ? stepu : otherStepu
          distStepY := (maxDistuK=2) ? stepu : otherStepu
          tkX := prevMX
@@ -75821,7 +75821,6 @@ ActPaintBrushNow() {
          thisIndex++
          avgDistX := (distX + distStepX)//2
          avgDistY := (distY + distStepY)//2
-
          Loop
          {
             Xgood := Ygood := 0
@@ -75935,25 +75934,20 @@ ActPaintBrushNow() {
          If (thisIndex=1)
             oMx := tkX, oMy := tkY
 
-         gdiBitmap := trGdip_DisposeImage(gdiBitmap, 1)
-         gdiBitmap := trGdip_CloneBitmap(A_ThisFunc, paintBitmap)
          ViewPortBMPcache := trGdip_DisposeImage(ViewPortBMPcache, 1)
          dummyResizeImageGDIwin()
       }
    }
 
-   If (imgBits)
-      Gdip_UnlockBits(paintBitmap, imgData)
+   If imgBits
+      Gdip_UnlockBits(whichBitmap, imgData)
 
    If (thisIndex>0)
    {
-      gdiBitmap := trGdip_DisposeImage(gdiBitmap, 1)
-      gdiBitmap := trGdip_CloneBitmap(A_ThisFunc, paintBitmap)
       dummyTimerDelayiedImageDisplay(500)
       SoundBeep, 900, 100
    }
 
-   paintBitmap := trGdip_DisposeImage(paintBitmap, 1)
    setWhileLoopExec(0)
    DllCall("qpvmain.dll\discardFilledPolygonCache", "int", 0)
    DllCall("qpvmain.dll\ResetBrushOpacityMap")
