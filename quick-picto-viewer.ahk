@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -75995,10 +75995,19 @@ DrawPaintBrushNowStep:
    Else If (BrushToolType=5)
       dllRad += thisEffectBlur*2 + brushSize + 10
 
-   lockX := Round(Max(0, Floor(cur_tkX - dllRad)))
-   lockY := Round(Max(0, Floor(cur_tkY - dllRad)))
-   lockW := Round(Min(imgW - lockX, Ceil(dllRad * 2)))
-   lockH := Round(Min(imgH - lockY, Ceil(dllRad * 2)))
+   If (BrushToolType = 5)
+   {
+      lockX := 0
+      lockY := 0
+      lockW := imgW
+      lockH := imgH
+   } Else
+   {
+      lockX := Round(Max(0, Floor(cur_tkX - dllRad)))
+      lockY := Round(Max(0, Floor(cur_tkY - dllRad)))
+      lockW := Round(Min(imgW - lockX, Ceil(dllRad * 2)))
+      lockH := Round(Min(imgH - lockY, Ceil(dllRad * 2)))
+   }
 
    If (lockW > 0 && lockH > 0)
    {
