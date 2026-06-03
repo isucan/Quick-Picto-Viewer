@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -75944,6 +75944,8 @@ ActPaintBrushNow() {
          If (thisIndex=1)
             oMx := tkX, oMy := tkY
 
+         killQPVscreenImgSection()
+         ViewPortBMPcache := trGdip_DisposeImage(ViewPortBMPcache, 1)
          dummyResizeImageGDIwin()
       }
    }
@@ -76492,6 +76494,7 @@ ActPaintBrushLargeNow() {
             oMx := tkX, oMy := tkY
 
          killQPVscreenImgSection()
+         ViewPortBMPcache := trGdip_DisposeImage(ViewPortBMPcache, 1)
          dummyResizeImageGDIwin()
       }
    }
