@@ -75547,7 +75547,7 @@ ActPaintBrushNow() {
    trGdip_GetImageDimensions(whichBitmap, imgW, imgH)
    If validBMP(whichBitmap)
    {
-      E1 := trGdip_LockBits(whichBitmap, 0, 0, imgW, imgH, imgPitch, imgBits, imgData, 3, "0x26200A")
+      E1 := trGdip_LockBits(whichBitmap, 0, 0, 1, 1, imgPitch, imgBits, imgData, 3, "0x26200A")
       If E1
       {
          showTOOLtip("ERROR: Unable to lock bitmap data. Failure occured in " A_ThisFunc "()")
@@ -75555,6 +75555,8 @@ ActPaintBrushNow() {
          SetTimer, RemoveTooltip, % -msgDisplayTime
          Return
       }
+      Gdip_UnlockBits(whichBitmap, imgData)
+      imgBits := 0
    }
 
    liveDrawingBrushTool := 1
@@ -75856,7 +75858,7 @@ ActPaintBrushNow() {
             offY := oMy - tkY
             If (BrushToolType<3 && BrushToolWetness>0)
             {
-               coloruY := getPixelColorAvgGdip(imgBits, tkX, tkY, imgW, imgH, imgPitch, 32, "0xFF" o_startToolColor)
+               coloruY := getPixelColorAvgGdip(whichBitmap, tkX, tkY, imgW, imgH, imgPitch, 32, "0xFF" o_startToolColor)
                startToolColor := SubStr(MixARGB(coloruY, "0xFF" startToolColor, thisWet), 5)
                startToolColor := RandomizeBrushColor(startToolColor)
             } Else If (BrushToolType<3)
@@ -75934,13 +75936,12 @@ ActPaintBrushNow() {
          If (thisIndex=1)
             oMx := tkX, oMy := tkY
 
+         killQPVscreenImgSection()
          ViewPortBMPcache := trGdip_DisposeImage(ViewPortBMPcache, 1)
          dummyResizeImageGDIwin()
       }
    }
 
-   If imgBits
-      Gdip_UnlockBits(whichBitmap, imgData)
 
    If (thisIndex>0)
    {
@@ -75987,45 +75988,60 @@ DrawPaintBrushNowStep:
    dll_offY := -cur_offY
 
    colorARGB := "0x" Format("{1:x}", 255) startToolColor
-   rr := DllCall("qpvmain.dll\PaintBrushLarge"
-      , "UPtr", imgBits
-      , "int", imgW
-      , "int", imgH
-      , "int", imgPitch
-      , "int", 32
-      , "int", BrushToolType
-      , "double", cur_tkX
-      , "double", dll_tkY
-      , "int", brushSize
-      , "int", thisToolSoftness
-      , "double", thisToolAngle
-      , "double", thisToolAspectRatio
-      , "int", colorARGB
-      , "int", cur_opacity
-      , "int", BrushToolBlendMode - 1
-      , "double", cur_offX
-      , "double", dll_offY
-      , "UPtr", cloneBits
-      , "int", clonePitch
-      , "int", BrushToolEraserRestore
-      , "int", useSelArea
-      , "int", userimgGammaCorrect
-      , "int", BlendModesFlipped
-      , "int", thisBulgePinchFactor
-      , "int", thisEffectHue
-      , "int", thisEffectSat
-      , "int", thisEffectLight
-      , "int", thisEffectGamma
-      , "int", thisEffectBlur
-      , "UPtr", texBits
-      , "int", texW
-      , "int", texH
-      , "int", texPitch
-      , "int", texBpp
-      , "int", BrushToolOverDraw)
-  If !rr 
-     fnOutputDebug("An error occured in calling PaintBrushLarge() from the QPV DLL.")
-  Return
+
+   lockX := Max(0, Floor(cur_tkX - brushSize - 5))
+   lockY := Max(0, Floor(cur_tkY - brushSize - 5))
+   lockW := Min(imgW - lockX, Ceil(brushSize * 2 + 10))
+   lockH := Min(imgH - lockY, Ceil(brushSize * 2 + 10))
+
+   If (lockW > 0 && lockH > 0)
+   {
+      E1 := trGdip_LockBits(whichBitmap, lockX, lockY, lockW, lockH, imgPitch, imgBits, imgData, 3, "0x26200A")
+      If !E1
+      {
+         dll_imgBits := imgBits - lockY * imgPitch - lockX * 4
+         rr := DllCall("qpvmain.dll&PaintBrushLarge"
+            , "UPtr", dll_imgBits
+            , "int", imgW
+            , "int", imgH
+            , "int", imgPitch
+            , "int", 32
+            , "int", BrushToolType
+            , "double", cur_tkX
+            , "double", dll_tkY
+            , "int", brushSize
+            , "int", thisToolSoftness
+            , "double", thisToolAngle
+            , "double", thisToolAspectRatio
+            , "int", colorARGB
+            , "int", cur_opacity
+            , "int", BrushToolBlendMode - 1
+            , "double", cur_offX
+            , "double", dll_offY
+            , "UPtr", cloneBits
+            , "int", clonePitch
+            , "int", BrushToolEraserRestore
+            , "int", useSelArea
+            , "int", userimgGammaCorrect
+            , "int", BlendModesFlipped
+            , "int", thisBulgePinchFactor
+            , "int", thisEffectHue
+            , "int", thisEffectSat
+            , "int", thisEffectLight
+            , "int", thisEffectGamma
+            , "int", thisEffectBlur
+            , "UPtr", texBits
+            , "int", texW
+            , "int", texH
+            , "int", texPitch
+            , "int", texBpp
+            , "int", BrushToolOverDraw)
+         If !rr
+            fnOutputDebug("An error occured in calling PaintBrushLarge() from the QPV DLL.")
+         Gdip_UnlockBits(whichBitmap, imgData)
+      }
+   }
+   Return
 } ; // ActPaintBrushNow()
 
 Gdip_GetPixelColorDirect(bits, x, y, imgW, imgH, pitch, bpp) {
@@ -76038,11 +76054,23 @@ Gdip_GetPixelColorDirect(bits, x, y, imgW, imgH, pitch, bpp) {
    Return Format("{1:02X}{2:02X}{3:02X}", r, g, b)
 }
 
-getPixelColorAvgGdip(bits, kX, kY, imgW, imgH, pitch, bpp, startToolColor) {
-   coloruA := Gdip_GetPixelColorDirect(bits, kX, kY, imgW, imgH, pitch, bpp)
-   coloruB := Gdip_GetPixelColorDirect(bits, kX + 2, kY + 2, imgW, imgH, pitch, bpp)
-   coloruD := Gdip_GetPixelColorDirect(bits, kX - 2, kY - 2, imgW, imgH, pitch, bpp)
-   coloruC := Gdip_GetPixelColorDirect(bits, kX + 2, kY - 2, imgW, imgH, pitch, bpp)
+getPixelColorAvgGdip(pBitmap, kX, kY, imgW, imgH, pitch, bpp, startToolColor) {
+   lockX := Max(0, Floor(kX - 2))
+   lockY := Max(0, Floor(kY - 2))
+   lockW := Min(imgW - lockX, 5)
+   lockH := Min(imgH - lockY, 5)
+   If (lockW > 0 && lockH > 0)
+   {
+      If !trGdip_LockBits(pBitmap, lockX, lockY, lockW, lockH, pitch, imgBits, imgData, 3, "0x26200A")
+      {
+         bits := imgBits - lockY * pitch - lockX * (bpp // 8)
+         coloruA := Gdip_GetPixelColorDirect(bits, kX, kY, imgW, imgH, pitch, bpp)
+         coloruB := Gdip_GetPixelColorDirect(bits, kX + 2, kY + 2, imgW, imgH, pitch, bpp)
+         coloruD := Gdip_GetPixelColorDirect(bits, kX - 2, kY - 2, imgW, imgH, pitch, bpp)
+         coloruC := Gdip_GetPixelColorDirect(bits, kX + 2, kY - 2, imgW, imgH, pitch, bpp)
+         Gdip_UnlockBits(pBitmap, imgData)
+      }
+   }
    If (coloruA != "" && coloruB != "")
       coloruZ := MixARGB("0xFF" coloruA, "0xFF" coloruB, 0.5)
    If (coloruC != "" && coloruD != "")
