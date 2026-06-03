@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -75989,7 +75989,7 @@ DrawPaintBrushNowStep:
 
    colorARGB := "0x" Format("{1:x}", 255) startToolColor
 
-   dllRad := Round((texW > 0 ? texW // 2 : brushSize // 2) + Abs(thisBulgePinchFactor) + 10)
+   dllRad := Round((texW > 0 ? texW // 2 : brushSize // 2) + Abs(thisBulgePinchFactor) + 10 + (BrushToolType = 5 ? thisEffectBlur : 0))
    lockX := Round(Max(0, Floor(cur_tkX - dllRad)))
    lockY := Round(Max(0, Floor(cur_tkY - dllRad)))
    lockW := Round(Min(imgW - lockX, Ceil(dllRad * 2)))
