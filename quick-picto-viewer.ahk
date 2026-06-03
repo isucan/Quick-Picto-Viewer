@@ -1,4 +1,4 @@
-; Script details:
+﻿; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -43458,9 +43458,9 @@ PanelBrushTool(dummy:=0, modus:=0) {
     Gui, Add, Tab3, %tabzDarkModus% AltSubmit Choose%thisPanelTab% vCurrentPanelTab gBtnTabsInfoUpdate hwndhCurrTab, General|Effects options|Randomize
     Gui, Tab, 1 ; general
     GuiAddDropDownList("x+15 y+15 w" slideWid " Section AltSubmit gupdateUIbrushTool Choose" BrushToolType " vBrushToolType", "Simple solid color|Soft edges brush|Cloner|Eraser|Effects|Smudge|Pinch|Bulge", "Brush type")
-    Gui, Add, Checkbox, x+10 hp wp +0x1000 gupdateUIbrushTool Checked%BrushToolEraserRestore% vBrushToolEraserRestore , Restore pixels opacity
-    wo := (PrefsLargeFonts=1) ? slideWid // 2 + 40 : slideWid // 2 + 5
-    Gui, Add, Button, xp yp hp w%wo% gBtnSetClonerBrushSource vuiBtnSetCloner, &Define source
+    wo := (PrefsLargeFonts=1) ? slideWid // 2 + 75 : slideWid // 2 + 30
+    Gui, Add, Checkbox, x+10 hp w%wo% +0x1000 gupdateUIbrushTool Checked%BrushToolEraserRestore% vBrushToolEraserRestore , Redefine opacity
+    Gui, Add, Button, xp yp hp wp gBtnSetClonerBrushSource vuiBtnSetCloner, &Define source
     Gui, Add, Text, xs y+10 h%hasa% w%sml% +0x200 Center gBtnToggleBrushColors vUIbtnBrushColorA +TabStop +hwndhBtnTglClrA, [X]
     ToolTip2ctrl(hBtnTglClrA, "Toggle active color")
     GuiAddPickerColor("x+5 hp w" sml, "BrushToolAcolor")
