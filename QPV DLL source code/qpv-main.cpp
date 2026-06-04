@@ -8466,7 +8466,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     #pragma omp parallel for schedule(dynamic)
     for (int i=0; i < totalStepsY; ++i)
     {
-        int py = (stepY > 0) ? (sY + i) : (sY - i);
+        int py = (stepY>0) ? (sY + i) : (sY - i);
         int iy = imgH - 1 - py;
         INT64 rowOffset = (INT64)iy * pitch;
 
@@ -8475,7 +8475,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
         int py_mod = 0;
         int py_mod_shift = 0;
         size_t cy_grid = 0;
-        if (brushType <= 5 && brushOverDraw == 0)
+        if (brushType<=5 && brushOverDraw==0)
         {
             cy = py >> 7;
             py_mod = py & 127;
@@ -8486,14 +8486,14 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
         // Determine row-level pixel range
         int scan_sX = sX;
         int scan_eX = eX;
-        if (!texData || texW <= 0 || texH <= 0)
+        if (!texData || texW<=0 || texH<=0)
         {
             double Y = py - tkY;
             double B_coeff = Y * B_term_factor;
             double C_coeff = Y * Y * C_term_factor - 1.0;
             double discriminant = B_coeff * B_coeff - 4.0 * A_coeff * C_coeff;
 
-            if (discriminant < 0.0)
+            if (discriminant < 0)
                continue; // The row does not intersect the ellipse/circle
 
             double sqrt_d = sqrt(discriminant);
@@ -8550,10 +8550,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 
                 // Evaluate using squared distance (saves an expensive sqrt per pixel)
                 double dist_norm_sq = (rotX * invRx) * (rotX * invRx) + (rotY * invRy) * (rotY * invRy);
-                if (dist_norm_sq > 1.0)
+                if (dist_norm_sq>1)
                    continue;
 
-                if (softness > 0)
+                if (softness>0)
                 {
                     if (dist_norm_sq >= falloff_sq)
                     {
@@ -8568,7 +8568,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 }
             }
 
-            if (mask_val == 0)
+            if (mask_val==0)
                continue;
 
             if (brushType == 7 || brushType == 8)

@@ -1,4 +1,4 @@
-; Script details:
+﻿; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -44128,9 +44128,8 @@ updateUIbrushTool() {
       SetTimer, WriteSettingsBrushPanel, -300
    } Else If (CurrentPanelTab=2)
    {
-      cloneraFX := (BrushToolType=3 && !viewportQPVimage.imgHandle) ? 1 : 0
       uiSlidersArray["BrushToolWetness", 10] := (BrushToolType<=2 || BrushToolType>=6) ? 1 : 0
-      uiSlidersArray["BrushToolBlurStrength", 10] := (cloneraFX=1 || BrushToolType=5) ? 1 : 0
+      uiSlidersArray["BrushToolBlurStrength", 10] := (BrushToolType=5) ? 1 : 0
 
       actu := (BrushToolType=2 || BrushToolType=3 || BrushToolType>=5) ? "SettingsGUIA: Enable" : "SettingsGUIA: Disable"
       GuiControl, % actu, BrushToolBlendMode
@@ -72346,8 +72345,7 @@ LoadBitmapForScreen(imgPath, allowCaching, frameu, forceGDIp:=0) {
      ; r := viewportQPVimage.LoadImage(imgPath, frameu)
      w := viewportQPVimage.Width, h := viewportQPVimage.Height
      calcIMGdimensions(w, h, 300, 300, newW, newH)
-     ; ToolTip, % w "|" h , , , 2
-     If (viewportQPVimage.LoadTime>60)
+     If (viewportQPVimage.LoadTime>90)
         preventUndoLevels := 1
 
      oBitmap := trGdip_CreateBitmap(A_ThisFunc, newW, newH)
@@ -75578,12 +75576,21 @@ ActPaintBrushNow() {
       coloruA := Gdip_GetPixelColor(whichBitmap, kX, kY, 1)
       startToolColor := SubStr(MixARGB(coloruA, "0xFF" startToolColor, 0.2), 5)
       thisWetness := 20
+   } Else If (BrushToolType=6) ; smudge 
+   {
+      thisWetness := clampInRange(BrushToolWetness + 6, 4, 22)
    } Else thisWetness := BrushToolWetness
 
+   thisBulgePinchFactor := BrushToolWetness + 1
+   If (BrushToolType=7)
+      thisBulgePinchFactor := -BrushToolWetness - 1
+   Else If (BrushToolType=6)
+      thisBulgePinchFactor := 0
+
    oMx := kX, oMy := kY
-   o_brushSize := brushSize := (BrushToolDoubleSize=1) ? brushToolSize*2 : brushToolSize
-   If (BrushToolType>=6 && brushSize<5)
-      brushSize := 5
+   o_brushSize := brushSize := (BrushToolDoubleSize=1) ? BrushToolSize*2 : brushToolSize
+   If (BrushToolType>=6 && brushSize<10)
+      brushSize := 10
 
    If (BrushToolRandomSize>0)
    {
@@ -75592,12 +75599,6 @@ ActPaintBrushNow() {
       brushSize := clampInRange(brushSize + gR, brushSize//3 + 2, brushSize + Abs(gR))
    }
 
-   thisBulgePinchFactor := BrushToolWetness + 1
-   If (BrushToolType=7)
-      thisBulgePinchFactor := -BrushToolWetness - 1
-   Else If (BrushToolType=6)
-      thisBulgePinchFactor := 0
-
    thisToolSoftness := (BrushToolType>1) ? BrushToolSoftness : 1
    If (BrushToolRandomSoftness>0 && BrushToolType>1)
    {
@@ -75605,8 +75606,8 @@ ActPaintBrushNow() {
       gR := Randomizer(-gR, gR, 2, 3)
       thisToolSoftness := clampInRange(BrushToolSoftness + gR, 1, 100)
    }
-   If (BrushToolType=6 && thisToolSoftness < 40)
-      thisToolSoftness := 40 + thisToolSoftness//2
+   If (BrushToolType=6)
+      thisToolSoftness := clampInRange(BrushToolSoftness, 50, 90)
 
    thisToolAngle := BrushToolAngle + 180
    If (BrushToolRandomAngle>0)
@@ -75624,8 +75625,8 @@ ActPaintBrushNow() {
       thisToolAspectRatio := clampInRange(BrushToolAspectRatio + gR, -100, 100)
    }
 
-   thisOpacity := (thisUseSecondaryColor=1) ? BrushToolBopacity : BrushToolAopacity
    useSelArea := 0
+   thisOpacity := (thisUseSecondaryColor=1) ? BrushToolBopacity : BrushToolAopacity
    If (editingSelectionNow=1 && BrushToolOutsideSelection>1)
    {
       useSelArea := 1
@@ -75721,14 +75722,14 @@ ActPaintBrushNow() {
       }
 
       GetMouseCoord2wind(PVhwnd, mX, mY)
-      If (BrushToolRandomPosX>0)
+      If (BrushToolRandomPosX>0 && BrushToolType<6)
       {
          gR := Ceil(brushSize*(BrushToolRandomPosX/100))
          gR := Ceil(Randomizer(-gR, gR, 3, 6) * zoomLevel)
          mX += gR
       }
 
-      If (BrushToolRandomPosY>0)
+      If (BrushToolRandomPosY>0 && BrushToolType<6)
       {
          gR := Ceil(brushSize*(BrushToolRandomPosY/100))
          gR := Ceil(Randomizer(-gR, gR, 3, 7) * zoomLevel)
@@ -75859,18 +75860,20 @@ ActPaintBrushNow() {
             cur_tkY := tkY
             If (BrushToolType=6)
             {
-               smudgeStrength := clampInRange(BrushToolWetness*4 + 1, 5, brushSize)
+               strengthMultiplier := (brushSize<985) ? (98 - brushSize//10) : 4
+               strengthMultiplier := clampInRange( strengthMultiplier - (100 - BrushToolSoftness)//2, 4, 98)
+               smudgeStrength := clampInRange(thisWetness * strengthMultiplier + 1, 5, brushSize)
                cur_offX := dirX * clampInRange(distStepX, 1, smudgeStrength)
                cur_offY := dirY * clampInRange(distStepY, 1, smudgeStrength)
 
                stepDist := Sqrt(distStepX*distStepX + distStepY*distStepY)
                smudgeAccDist += stepDist
-               maxSmudgeDist := brushSize * (BrushToolWetness/22 * 2 + 2)
+               maxSmudgeDist := brushSize * (thisWetness/22 * 2 + 2)
                fadeFactor := 1.0 - (smudgeAccDist / maxSmudgeDist)
                If (fadeFactor < 0.01)
                   fadeFactor := 0.01
 
-               cur_opacity := Floor(thisOpacity * (BrushToolWetness/22) * fadeFactor)
+               cur_opacity := Floor(thisOpacity * (thisWetness/22) * fadeFactor)
                If (BrushToolTexture=1 && thisIndex>1 && (A_TickCount - plza>450) && BrushToolOverDraw=1)
                {
                   plza := A_TickCount
@@ -75933,7 +75936,6 @@ ActPaintBrushNow() {
       }
    }
 
-
    If (thisIndex>0)
    {
       dummyTimerDelayiedImageDisplay(500)
@@ -75980,6 +75982,11 @@ DrawPaintBrushNowStep:
    dll_tkY := imgH - 1 - cur_tkY
    dll_offY := -cur_offY
    dllRad := (texW>0) ? texW // 2 + 2 : brushSize // 2 + 2
+   If (BrushToolType>5)
+      dllRad += Abs(thisBulgePinchFactor) + 10
+   Else If (BrushToolType=5)
+      dllRad += thisEffectBlur + 10
+
    If (BrushToolType=3)
    {
       src_tkX := cur_tkX - cur_offX
@@ -76153,7 +76160,6 @@ ActPaintBrushLargeNow() {
    thisZeit := A_TickCount - 100
    thisIndex := 0
    liveDrawingBrushTool := 1
-
    kpi := (BrushToolType < 3) ? 1 : 0
    thisUseSecondaryColor := (kpi=1) ? BrushToolUseSecondaryColor : 0
    If (GetKeyState("Ctrl", "P") && kpi=1)
@@ -76172,12 +76178,15 @@ ActPaintBrushLargeNow() {
       coloruA := "0xFF" FreeImage_GetPixelColorDirect(viewportQPVimage.imgHandle, kX, kY)
       startToolColor := SubStr(MixARGB(coloruA, "0xFF" startToolColor, 0.2), 5)
       thisWetness := 20
+   } Else If (BrushToolType=6) ; smudge 
+   {
+      thisWetness := clampInRange(BrushToolWetness + 6, 4, 22)
    } Else thisWetness := BrushToolWetness
 
    oMx := kX, oMy := kY
    o_brushSize := brushSize := (BrushToolDoubleSize=1) ? brushToolSize*4 : brushToolSize
-   If (BrushToolType>=6 && brushSize<5)
-      brushSize := 5
+   If (BrushToolType>=6 && brushSize<10)
+      brushSize := 10
 
    If (BrushToolRandomSize>0)
    {
@@ -76199,8 +76208,9 @@ ActPaintBrushLargeNow() {
       gR := Randomizer(-gR, gR, 2, 3)
       thisToolSoftness := clampInRange(BrushToolSoftness + gR, 1, 100)
    }
-   If (BrushToolType=6 && thisToolSoftness < 40)
-      thisToolSoftness := 40 + thisToolSoftness//2
+
+   If (BrushToolType=6)
+      thisToolSoftness := clampInRange(BrushToolSoftness, 50, 90)
 
    thisToolAngle := BrushToolAngle + 180
    If (BrushToolRandomAngle>0)
@@ -76319,14 +76329,14 @@ ActPaintBrushLargeNow() {
       }
 
       GetMouseCoord2wind(PVhwnd, mX, mY)
-      If (BrushToolRandomPosX>0)
+      If (BrushToolRandomPosX>0 && BrushToolType<6)
       {
          gR := Ceil(brushSize*(BrushToolRandomPosX/100))
          gR := Ceil(Randomizer(-gR, gR, 3, 6) * zoomLevel)
          mX += gR
       }
 
-      If (BrushToolRandomPosY>0)
+      If (BrushToolRandomPosY>0 && BrushToolType<6)
       {
          gR := Ceil(brushSize*(BrushToolRandomPosY/100))
          gR := Ceil(Randomizer(-gR, gR, 3, 7) * zoomLevel)
@@ -76460,18 +76470,20 @@ ActPaintBrushLargeNow() {
                ; Smudge brush: offset = step displacement in the movement direction,
                ; scaled by wetness-based smudge strength factor.
                ; offX>0 means sample from left (when moving right), i.e. behind the brush.
-               smudgeStrength := clampInRange(BrushToolWetness*4 + 1, 5, brushSize)
+               strengthMultiplier := (brushSize<985) ? (98 - brushSize//10) : 4
+               strengthMultiplier := clampInRange( strengthMultiplier - (100 - BrushToolSoftness)//2, 4, 98)
+               smudgeStrength := clampInRange(thisWetness * strengthMultiplier + 1, 5, brushSize)
                cur_offX := dirX * clampInRange(distStepX, 1, smudgeStrength)
                cur_offY := dirY * clampInRange(distStepY, 1, smudgeStrength)
 
                stepDist := Sqrt(distStepX*distStepX + distStepY*distStepY)
                smudgeAccDist += stepDist
-               maxSmudgeDist := brushSize * (BrushToolWetness/22 * 2 + 2)
+               maxSmudgeDist := brushSize * (thisWetness/22 * 2 + 2)
                fadeFactor := 1.0 - (smudgeAccDist / maxSmudgeDist)
                If (fadeFactor < 0.01)
                   fadeFactor := 0.01
 
-               cur_opacity := Floor(thisOpacity * (BrushToolWetness/22) * fadeFactor)
+               cur_opacity := Floor(thisOpacity * (thisWetness/22) * fadeFactor)
                If (BrushToolTexture=1 && thisIndex>1 && (A_TickCount - plza>450) && BrushToolOverDraw=1)
                {
                   plza := A_TickCount
@@ -76584,7 +76596,7 @@ DrawPaintBrushLargeStep:
       src_lockY := srcY_min
       src_lockW := srcX_max - srcX_min + 1
       src_lockH := srcY_max - srcY_min + 1
-      If (src_lockW > 0 && src_lockH > 0)
+      If (src_lockW>0 && src_lockH>0)
       {
          cloneBMP := FreeImage_Copy(viewportQPVimage.imgHandle, src_lockX, src_lockY, src_lockX + src_lockW, src_lockY + src_lockH)
          If cloneBMP
@@ -96449,7 +96461,7 @@ LoadFimFile(imgPath, noBPPconv, noBMP:=0, frameu:=0, sizesDesired:=0, ByRef newB
   If (isImgSizeTooLarge(imgW, imgH) && screenMode=1)
   {
      viewportQPVimage.LoadImage(imgPath, frameu, 0, 1, [hFIFimgA, tFrames, 0, sTime], 1)
-     If (viewportQPVimage.LoadTime>60)
+     If (viewportQPVimage.LoadTime>90)
         preventUndoLevels := 1
      Return "very-large"
   }
