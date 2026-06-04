@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -75962,6 +75962,10 @@ ActPaintBrushNow() {
    Return
 
 DrawPaintBrushNowStep:
+   cloneBits := 0
+   clonePitch := 0
+   cloneBMP := 0
+   E2 := 1
    If (BrushToolType=3)
    {
       If (BrushToolDynamicCloner=1)
@@ -75985,6 +75989,29 @@ DrawPaintBrushNowStep:
       dllRad += Abs(thisBulgePinchFactor) + 10
    Else If (BrushToolType=5)
       dllRad += thisEffectBlur + 10
+
+   If (BrushToolType=3)
+   {
+      src_tkX := cur_tkX - cur_offX
+      src_tkY := cur_tkY - cur_offY
+      src_lockX := Round(Max(0, Floor(src_tkX - dllRad)))
+      src_lockY := Round(Max(0, Floor(src_tkY - dllRad)))
+      src_lockW := Round(Min(imgW - src_lockX, Ceil(dllRad * 2)))
+      src_lockH := Round(Min(imgH - src_lockY, Ceil(dllRad * 2)))
+      If (src_lockW > 0 && src_lockH > 0)
+      {
+         cloneBMP := trGdip_CloneBitmapArea(A_ThisFunc, whichBitmap, src_lockX, src_lockY, src_lockW, src_lockH, "0x26200A")
+         If cloneBMP
+         {
+            E2 := trGdip_LockBits(cloneBMP, 0, 0, src_lockW, src_lockH, cPitch, cBits, cData, 3, "0x26200A")
+            If !E2
+            {
+               clonePitch := cPitch
+               cloneBits := Round(cBits - src_lockY * cPitch - src_lockX * 4)
+            }
+         }
+      }
+   }
 
    lockX := Round(Max(0, Floor(cur_tkX - dllRad)))
    lockY := Round(Max(0, Floor(cur_tkY - dllRad)))
@@ -76040,6 +76067,12 @@ DrawPaintBrushNowStep:
             fnOutputDebug("An error occured in calling PaintBrushLarge() from the QPV DLL.")
          Gdip_UnlockBits(whichBitmap, imgData)
       }
+   }
+   If cloneBMP
+   {
+      If !E2
+         Gdip_UnlockBits(cloneBMP, cData)
+      trGdip_DisposeImage(cloneBMP, 1)
    }
    Return
 } ; // ActPaintBrushNow()
@@ -76526,6 +76559,9 @@ ActPaintBrushLargeNow() {
    Return
 
 DrawPaintBrushLargeStep:
+   cloneBits := 0
+   clonePitch := 0
+   cloneBMP := 0
    If (BrushToolType=3)
    {
       If (BrushToolDynamicCloner=1)
@@ -76540,6 +76576,38 @@ DrawPaintBrushLargeStep:
    }
 
    colorARGB := "0x" Format("{1:x}", 255) startToolColor
+   dllRad := brushSize // 2 + 2
+   If (texW>0)
+      dllRad += texW // 2 + 2
+   If (BrushToolType>5)
+      dllRad += Abs(thisBulgePinchFactor) + 10
+   Else If (BrushToolType=5)
+      dllRad += thisEffectBlur + 10
+
+   If (BrushToolType=3)
+   {
+      src_tkX := cur_tkX - cur_offX
+      src_tkY := cur_tkY - cur_offY
+      src_lockX := Round(Max(0, Floor(src_tkX - dllRad)))
+      src_lockY := Round(Max(0, Floor(src_tkY - dllRad)))
+      src_lockW := Round(Min(imgW - src_lockX, Ceil(dllRad * 2)))
+      src_lockH := Round(Min(imgH - src_lockY, Ceil(dllRad * 2)))
+      If (src_lockW > 0 && src_lockH > 0)
+      {
+         cloneBMP := FreeImage_Copy(viewportQPVimage.imgHandle, src_lockX, src_lockY, src_lockX + src_lockW, src_lockY + src_lockH)
+         If cloneBMP
+         {
+            cBits := FreeImage_GetBits(cloneBMP)
+            cPitch := FreeImage_GetStride(cloneBMP)
+            If (cBits && cPitch)
+            {
+               clonePitch := cPitch
+               cloneBits := Round(cBits + (src_lockH + src_lockY - imgH) * cPitch - src_lockX * (imgBpp // 8))
+            }
+         }
+      }
+   }
+
    rr := DllCall("qpvmain.dll\PaintBrushLarge"
       , "UPtr", imgBits
       , "int", imgW
@@ -76579,6 +76647,8 @@ DrawPaintBrushLargeStep:
       , "int", 0, "int", 0, "int", 0, "int", 0)
   If !rr 
      fnOutputDebug("An error occured in calling PaintBrushLarge() from the QPV DLL.")
+  If cloneBMP
+     FreeImage_UnLoad(cloneBMP)
   Return
 } ; // ActPaintBrushLargeNow()
 
