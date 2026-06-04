@@ -231,6 +231,7 @@ Class screenQPVimage {
      This.BPP := imgBPP
      This.Channels := Channels
      This.actions := 0
+     ; ToolTip, % "t=" this.LoadTime , , , 2
      Return 1
    } ; // LoadFimFile
 
