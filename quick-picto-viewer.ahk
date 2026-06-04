@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -75984,10 +75984,18 @@ DrawPaintBrushNowStep:
    {
       src_tkX := cur_tkX - cur_offX
       src_tkY := cur_tkY - cur_offY
-      src_lockX := Round(Max(0, Floor(src_tkX - dllRad)))
-      src_lockY := Round(Max(0, Floor(src_tkY - dllRad)))
-      src_lockW := Round(Min(imgW - src_lockX, Ceil(dllRad * 2)))
-      src_lockH := Round(Min(imgH - src_lockY, Ceil(dllRad * 2)))
+      dstX1 := clampInRange(Round(cur_tkX - dllRad), 0, imgW - 1)
+      dstX2 := clampInRange(Round(cur_tkX + dllRad), 0, imgW - 1)
+      dstY1 := clampInRange(Round(cur_tkY - dllRad), 0, imgH - 1)
+      dstY2 := clampInRange(Round(cur_tkY + dllRad), 0, imgH - 1)
+      srcX_min := clampInRange(Round(dstX1 - cur_offX) - 3, 0, imgW - 1)
+      srcX_max := clampInRange(Round(dstX2 - cur_offX) + 3, 0, imgW - 1)
+      srcY_min := clampInRange(Round(dstY1 - cur_offY) - 3, 0, imgH - 1)
+      srcY_max := clampInRange(Round(dstY2 - cur_offY) + 3, 0, imgH - 1)
+      src_lockX := srcX_min
+      src_lockY := srcY_min
+      src_lockW := srcX_max - srcX_min + 1
+      src_lockH := srcY_max - srcY_min + 1
       If (src_lockW>0 && src_lockH>0)
       {
          cloneBMP := trGdip_CloneBitmapArea(A_ThisFunc, whichBitmap, src_lockX, src_lockY, src_lockW, src_lockH, "0x26200A")
@@ -76564,10 +76572,18 @@ DrawPaintBrushLargeStep:
       dllRad := (texW>0) ? texW // 2 + 2 : brushSize // 2 + 2
       src_tkX := cur_tkX - cur_offX
       src_tkY := cur_tkY - cur_offY
-      src_lockX := Round(Max(0, Floor(src_tkX - dllRad)))
-      src_lockY := Round(Max(0, Floor(src_tkY - dllRad)))
-      src_lockW := Round(Min(imgW - src_lockX, Ceil(dllRad * 2)))
-      src_lockH := Round(Min(imgH - src_lockY, Ceil(dllRad * 2)))
+      dstX1 := clampInRange(Round(cur_tkX - dllRad), 0, imgW - 1)
+      dstX2 := clampInRange(Round(cur_tkX + dllRad), 0, imgW - 1)
+      dstY1 := clampInRange(Round(cur_tkY - dllRad), 0, imgH - 1)
+      dstY2 := clampInRange(Round(cur_tkY + dllRad), 0, imgH - 1)
+      srcX_min := clampInRange(Round(dstX1 - cur_offX) - 3, 0, imgW - 1)
+      srcX_max := clampInRange(Round(dstX2 - cur_offX) + 3, 0, imgW - 1)
+      srcY_min := clampInRange(Round(dstY1 - cur_offY) - 3, 0, imgH - 1)
+      srcY_max := clampInRange(Round(dstY2 - cur_offY) + 3, 0, imgH - 1)
+      src_lockX := srcX_min
+      src_lockY := srcY_min
+      src_lockW := srcX_max - srcX_min + 1
+      src_lockH := srcY_max - srcY_min + 1
       If (src_lockW > 0 && src_lockH > 0)
       {
          cloneBMP := FreeImage_Copy(viewportQPVimage.imgHandle, src_lockX, src_lockY, src_lockX + src_lockW, src_lockY + src_lockH)
