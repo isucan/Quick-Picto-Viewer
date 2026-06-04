@@ -1,4 +1,4 @@
-; Script details:
+﻿; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -5624,9 +5624,9 @@ vpWinClientSize(ByRef w, ByRef h, hwnd:=0, mode:=0) {
 }
 
 BtnSetBrushSymmetryCoords() {
-   If (BrushToolType>5)
+   If !isPaintSymmetryModeAllowed()
    {
-      showTOOLtip("WARNING: Symmetry painting not available for the current brush type")
+      showTOOLtip("WARNING: Symmetry painting mode not available for the current brush mode.")
       SoundBeep , 300, 100
       SetTimer, RemoveTooltip, % -msgDisplayTime
       Return
@@ -44095,10 +44095,10 @@ updateUIbrushTool() {
          }
       }
 
-      actu := (BrushToolType=3 && !viewportQPVimage.imgHandle) ? "SettingsGUIA: Disable" : "SettingsGUIA: Enable"
+      actu := (BrushToolType>6) ? "SettingsGUIA: Disable" : "SettingsGUIA: Enable"
       GuiControl, % actu, BrushToolOverDraw
 
-      tehLabel := (BrushToolType>=6) ? "&Auto-scale deformer" : "&Airbrush mode"
+      tehLabel := (BrushToolType=6) ? "&Auto-scale deformer" : "&Airbrush mode"
       GuiControl, SettingsGUIA: Text, BrushToolOverDraw, %tehLabel%
       uiSlidersArray["BrushToolStepping", 10] :=  (BrushToolType>=7) ? 0 : 1
       uiSlidersArray["BrushToolSoftness", 10] := (BrushToolTexture>1 || BrushToolType=1) ? 0 : 1
@@ -44132,7 +44132,7 @@ updateUIbrushTool() {
       uiSlidersArray["BrushToolWetness", 10] := (BrushToolType<=2 || BrushToolType>=6) ? 1 : 0
       uiSlidersArray["BrushToolBlurStrength", 10] := (cloneraFX=1 || BrushToolType=5) ? 1 : 0
 
-      actu := (BrushToolType=2 || (BrushToolType=3 || BrushToolType>=5) && viewportQPVimage.imgHandle) ? "SettingsGUIA: Enable" : "SettingsGUIA: Disable"
+      actu := (BrushToolType=2 || BrushToolType=3 || BrushToolType>=5) ? "SettingsGUIA: Enable" : "SettingsGUIA: Disable"
       GuiControl, % actu, BrushToolBlendMode
       GuiControl, % actu, BlendModesFlipped
 
@@ -44151,7 +44151,7 @@ updateUIbrushTool() {
       actu := (viewportQPVimage.imgHandle) ? "SettingsGUIA: Disable" : "SettingsGUIA: Enable"
       GuiControl, % actu, autoApplyVPcolors
 
-      actu := (BrushToolType<6) ? "SettingsGUIA: Enable" : "SettingsGUIA: Disable"
+      actu := isPaintSymmetryModeAllowed() ? "SettingsGUIA: Enable" : "SettingsGUIA: Disable"
       GuiControl, % actu, infoSymmetryLabel
       GuiControl, % actu, BTNuiSetLabelSymmetry
       GuiControl, % actu, BrushToolSymmetryX
@@ -75884,7 +75884,7 @@ ActPaintBrushNow() {
             }
 
             Gosub, DrawPaintBrushNowStep
-            okaySymmetry := (BrushToolType=6 || BrushToolType=3 && BrushToolDynamicCloner=1) ? 0 : 1
+            okaySymmetry := isPaintSymmetryModeAllowed()
             If ((BrushToolSymmetryX=1 || BrushToolSymmetryY=1) && okaySymmetry=1)
             {
                calcBrushSymmetryCoords(tkX, tkY, imgW, imgH, skX, skY)
@@ -75962,10 +75962,7 @@ ActPaintBrushNow() {
    Return
 
 DrawPaintBrushNowStep:
-   cloneBits := 0
-   clonePitch := 0
-   cloneBMP := 0
-   E2 := 1
+   cloneBits := clonePitch := cloneBMP := 0
    If (BrushToolType=3)
    {
       If (BrushToolDynamicCloner=1)
@@ -75982,14 +75979,7 @@ DrawPaintBrushNowStep:
    colorARGB := "0x" Format("{1:x}", 255) startToolColor
    dll_tkY := imgH - 1 - cur_tkY
    dll_offY := -cur_offY
-   dllRad := brushSize // 2 + 2
-   If (texW>0)
-      dllRad += texW // 2 + 2
-   If (BrushToolType>5)
-      dllRad += Abs(thisBulgePinchFactor) + 10
-   Else If (BrushToolType=5)
-      dllRad += thisEffectBlur + 10
-
+   dllRad := (texW>0) ? texW // 2 + 2 : brushSize // 2 + 2
    If (BrushToolType=3)
    {
       src_tkX := cur_tkX - cur_offX
@@ -75998,10 +75988,10 @@ DrawPaintBrushNowStep:
       src_lockY := Round(Max(0, Floor(src_tkY - dllRad)))
       src_lockW := Round(Min(imgW - src_lockX, Ceil(dllRad * 2)))
       src_lockH := Round(Min(imgH - src_lockY, Ceil(dllRad * 2)))
-      If (src_lockW > 0 && src_lockH > 0)
+      If (src_lockW>0 && src_lockH>0)
       {
          cloneBMP := trGdip_CloneBitmapArea(A_ThisFunc, whichBitmap, src_lockX, src_lockY, src_lockW, src_lockH, "0x26200A")
-         If cloneBMP
+         If validBMP(cloneBMP)
          {
             E2 := trGdip_LockBits(cloneBMP, 0, 0, src_lockW, src_lockH, cPitch, cBits, cData, 3, "0x26200A")
             If !E2
@@ -76017,7 +76007,7 @@ DrawPaintBrushNowStep:
    lockY := Round(Max(0, Floor(cur_tkY - dllRad)))
    lockW := Round(Min(imgW - lockX, Ceil(dllRad * 2)))
    lockH := Round(Min(imgH - lockY, Ceil(dllRad * 2)))
-   If (lockW> 0 && lockH>0)
+   If (lockW>0 && lockH>0)
    {
       E1 := trGdip_LockBits(whichBitmap, lockX, lockY, lockW, lockH, imgPitch, imgBits, imgData, 3, "0x26200A")
       If !E1
@@ -76068,7 +76058,8 @@ DrawPaintBrushNowStep:
          Gdip_UnlockBits(whichBitmap, imgData)
       }
    }
-   If cloneBMP
+
+   If validBMP(cloneBMP)
    {
       If !E2
          Gdip_UnlockBits(cloneBMP, cData)
@@ -76487,7 +76478,7 @@ ActPaintBrushLargeNow() {
             }
 
             Gosub, DrawPaintBrushLargeStep
-            okaySymmetry := (BrushToolType=6 || BrushToolType=3 && BrushToolDynamicCloner=1) ? 0 : 1
+            okaySymmetry := isPaintSymmetryModeAllowed()
             If ((BrushToolSymmetryX=1 || BrushToolSymmetryY=1) && okaySymmetry=1)
             {
                calcBrushSymmetryCoords(tkX, tkY, imgW, imgH, skX, skY)
@@ -76543,10 +76534,8 @@ ActPaintBrushLargeNow() {
       dummyTimerDelayiedImageDisplay(500)
       SoundBeep, 900, 100
    } Else
-   {
       recordUndoLevelHugeImagesNow("kill", 0, 0, 0)
-   }
-
+ 
    setWhileLoopExec(0)
    DllCall("qpvmain.dll\discardFilledPolygonCache", "int", 0)
    DllCall("qpvmain.dll\ResetBrushOpacityMap")
@@ -76559,9 +76548,7 @@ ActPaintBrushLargeNow() {
    Return
 
 DrawPaintBrushLargeStep:
-   cloneBits := 0
-   clonePitch := 0
-   cloneBMP := 0
+   cloneBits :=  clonePitch := cloneBMP := 0
    If (BrushToolType=3)
    {
       If (BrushToolDynamicCloner=1)
@@ -76573,19 +76560,8 @@ DrawPaintBrushLargeStep:
          cur_offX := cur_tkX - tinyPrevAreaCoordX
          cur_offY := cur_tkY - tinyPrevAreaCoordY
       }
-   }
 
-   colorARGB := "0x" Format("{1:x}", 255) startToolColor
-   dllRad := brushSize // 2 + 2
-   If (texW>0)
-      dllRad += texW // 2 + 2
-   If (BrushToolType>5)
-      dllRad += Abs(thisBulgePinchFactor) + 10
-   Else If (BrushToolType=5)
-      dllRad += thisEffectBlur + 10
-
-   If (BrushToolType=3)
-   {
+      dllRad := (texW>0) ? texW // 2 + 2 : brushSize // 2 + 2
       src_tkX := cur_tkX - cur_offX
       src_tkY := cur_tkY - cur_offY
       src_lockX := Round(Max(0, Floor(src_tkX - dllRad)))
@@ -76608,6 +76584,7 @@ DrawPaintBrushLargeStep:
       }
    }
 
+   colorARGB := "0x" Format("{1:x}", 255) startToolColor
    rr := DllCall("qpvmain.dll\PaintBrushLarge"
       , "UPtr", imgBits
       , "int", imgW
@@ -78501,11 +78478,7 @@ additionalHUDelements(mode, mainWidth, mainHeight, newW:=0, newH:=0, DestPosX:=0
     ; highlight image editing each symmetry axis
     thisThick := imgHUDbaseUnit/11
     Gdip_SetPenWidth(pPen4, thisThick)
-    okaySymmetry := (BrushToolType=6 || BrushToolType=3 && BrushToolDynamicCloner=1) ? 0 : 1
-    If (!viewportQPVimage.imgHandle && BrushToolType>3)
-       okaySymmetry := 0
-
-    isSymmetryAllowed := (AnyWindowOpen=64 && okaySymmetry=1 && liveDrawingBrushTool=1) || (drawingShapeNow=1 && !AnyWindowOpen) ? 1 : 0
+    isSymmetryAllowed := (drawingShapeNow=1 && !AnyWindowOpen) ? 1 : isPaintSymmetryModeAllowed()
     ccX := (drawingShapeNow=1) ? Round(vpSymmetryPointXdp) : prevDestPosX + Round(prevResizedVPimgW * BrushToolSymmetryPointX)
     ccY := (drawingShapeNow=1) ? Round(vpSymmetryPointYdp) : prevDestPosY + Round(prevResizedVPimgH * BrushToolSymmetryPointY)
     If ((BrushToolSymmetryX=1 || CustomShapeSymmetry=1) && isSymmetryAllowed=1)
@@ -78515,6 +78488,12 @@ additionalHUDelements(mode, mainWidth, mainHeight, newW:=0, newH:=0, DestPosX:=0
 
     Gdip_ResetWorldTransform(2NDglPG)
     r2 := doLayeredWinUpdate(A_ThisFunc, hGDIselectwin, 2NDglHDC)
+}
+
+isPaintSymmetryModeAllowed() {
+    okaySymmetry := (BrushToolType=6 || BrushToolType=3 && BrushToolDynamicCloner=1) ? 0 : 1
+    isSymmetryAllowed := (AnyWindowOpen=64 && okaySymmetry=1 && liveDrawingBrushTool=1) ? 1 : 0
+    Return isSymmetryAllowed
 }
 
 toggleLiveEditObject(dummy:=0) {
