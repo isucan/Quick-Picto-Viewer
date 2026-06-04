@@ -8643,8 +8643,12 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             } else if (brushType == 3)
             {
                 // Cloner brush: sample from srcData
-                int srcX = clamp((int)round(px - offX), 0, imgW - 1);
-                int srcY = clamp((int)round(py - offY), 0, imgH - 1);
+                int srcX_raw = (int)round(px - offX);
+                int srcY_raw = (int)round(py - offY);
+                if (srcX_raw < 0 || srcX_raw >= imgW || srcY_raw < 0 || srcY_raw >= imgH)
+                   continue;
+                int srcX = srcX_raw;
+                int srcY = srcY_raw;
                 unsigned char* srcData = cloneData ? cloneData : imgData;
                 int srcPitch = cloneData ? clonePitch : pitch;
                 int s_iy = imgH - 1 - srcY;
