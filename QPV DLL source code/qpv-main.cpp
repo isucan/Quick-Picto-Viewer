@@ -11,6 +11,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <memory>
 #include <atomic>
 #include <stack>
 #include <map>
@@ -8282,22 +8283,21 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int cloneW = cloneEndX - cloneStartX + 1;
     int cloneH = cloneEndY - cloneStartY + 1;
     int localPitch = cloneW * bytesPerPixel;
-    std::vector<unsigned char> localClone;
+    std::unique_ptr<unsigned char[]> localClone;
     size_t allocationSize = (size_t)cloneW * cloneH * bytesPerPixel;
     if (!cloneData && (brushType == 6 || brushType == 7 || brushType == 8) && cloneW > 0 && cloneH > 0 && allocationSize < 150 * 1024 * 1024)
     {
-        try {
-            localClone.resize(allocationSize);
+        localClone.reset(new (std::nothrow) unsigned char[allocationSize]);
+        if (localClone)
+        {
             for (int ry = 0; ry < cloneH; ++ry)
             {
                 int img_py = cloneStartY + ry;
                 int img_iy = imgH - 1 - img_py;
                 unsigned char* srcRow = imgData + (INT64)img_iy * pitch + cloneStartX * bytesPerPixel;
-                unsigned char* dstRow = localClone.data() + (INT64)ry * localPitch;
+                unsigned char* dstRow = localClone.get() + (INT64)ry * localPitch;
                 memcpy(dstRow, srcRow, localPitch);
             }
-        } catch (...) {
-            localClone.clear();
         }
     }
 
@@ -8829,17 +8829,17 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 double fy = srcYf - floor(srcYf);
 
                 unsigned char *p11, *p21, *p12, *p22;
-                if (!localClone.empty())
+                if (localClone)
                 {
                     int lx1 = safe_clamp_int(x1 - cloneStartX, 0, cloneW - 1);
                     int ly1 = safe_clamp_int(y1 - cloneStartY, 0, cloneH - 1);
                     int lx2 = safe_clamp_int(x2 - cloneStartX, 0, cloneW - 1);
                     int ly2 = safe_clamp_int(y2 - cloneStartY, 0, cloneH - 1);
 
-                    p11 = localClone.data() + (INT64)ly1 * localPitch + lx1 * bytesPerPixel;
-                    p21 = localClone.data() + (INT64)ly1 * localPitch + lx2 * bytesPerPixel;
-                    p12 = localClone.data() + (INT64)ly2 * localPitch + lx1 * bytesPerPixel;
-                    p22 = localClone.data() + (INT64)ly2 * localPitch + lx2 * bytesPerPixel;
+                    p11 = localClone.get() + (INT64)ly1 * localPitch + lx1 * bytesPerPixel;
+                    p21 = localClone.get() + (INT64)ly1 * localPitch + lx2 * bytesPerPixel;
+                    p12 = localClone.get() + (INT64)ly2 * localPitch + lx1 * bytesPerPixel;
+                    p22 = localClone.get() + (INT64)ly2 * localPitch + lx2 * bytesPerPixel;
                 } else
                 {
                     unsigned char* srcData = cloneData ? cloneData : imgData;
@@ -8859,11 +8859,11 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 double w12 = (1.0 - fx) * fy;
                 double w22 = fx * fy;
 
-                srcB = (int)round(w11 * p11[0] + w21 * p21[0] + w12 * p12[0] + w22 * p22[0]);
-                srcG = (int)round(w11 * p11[1] + w21 * p21[1] + w12 * p12[1] + w22 * p22[1]);
-                srcR = (int)round(w11 * p11[2] + w21 * p21[2] + w12 * p12[2] + w22 * p22[2]);
+                srcB = safe_clamp_int((int)round(w11 * p11[0] + w21 * p21[0] + w12 * p12[0] + w22 * p22[0]), 0, 255);
+                srcG = safe_clamp_int((int)round(w11 * p11[1] + w21 * p21[1] + w12 * p12[1] + w22 * p22[1]), 0, 255);
+                srcR = safe_clamp_int((int)round(w11 * p11[2] + w21 * p21[2] + w12 * p12[2] + w22 * p22[2]), 0, 255);
                 if (bytesPerPixel == 4)
-                   srcA = (int)round(w11 * p11[3] + w21 * p21[3] + w12 * p12[3] + w22 * p22[3]);
+                   srcA = safe_clamp_int((int)round(w11 * p11[3] + w21 * p21[3] + w12 * p12[3] + w22 * p22[3]), 0, 255);
                 else
                    srcA = 255;
             } else if (brushType == 7 || brushType == 8)
@@ -8886,17 +8886,17 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 double w22 = fx * fy;
 
                 unsigned char *p11, *p21, *p12, *p22;
-                if (!localClone.empty())
+                if (localClone)
                 {
                     int lx1 = safe_clamp_int(x1 - cloneStartX, 0, cloneW - 1);
                     int ly1 = safe_clamp_int(y1 - cloneStartY, 0, cloneH - 1);
                     int lx2 = safe_clamp_int(x2 - cloneStartX, 0, cloneW - 1);
                     int ly2 = safe_clamp_int(y2 - cloneStartY, 0, cloneH - 1);
 
-                    p11 = localClone.data() + (INT64)ly1 * localPitch + lx1 * bytesPerPixel;
-                    p21 = localClone.data() + (INT64)ly1 * localPitch + lx2 * bytesPerPixel;
-                    p12 = localClone.data() + (INT64)ly2 * localPitch + lx1 * bytesPerPixel;
-                    p22 = localClone.data() + (INT64)ly2 * localPitch + lx2 * bytesPerPixel;
+                    p11 = localClone.get() + (INT64)ly1 * localPitch + lx1 * bytesPerPixel;
+                    p21 = localClone.get() + (INT64)ly1 * localPitch + lx2 * bytesPerPixel;
+                    p12 = localClone.get() + (INT64)ly2 * localPitch + lx1 * bytesPerPixel;
+                    p22 = localClone.get() + (INT64)ly2 * localPitch + lx2 * bytesPerPixel;
                 } else
                 {
                     unsigned char* srcData = cloneData ? cloneData : imgData;
@@ -8911,11 +8911,11 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                     p22 = srcData + (INT64)s_iy2 * srcPitch + x2 * bytesPerPixel;
                 }
 
-                srcB = (int)round(w11 * p11[0] + w21 * p21[0] + w12 * p12[0] + w22 * p22[0]);
-                srcG = (int)round(w11 * p11[1] + w21 * p21[1] + w12 * p12[1] + w22 * p22[1]);
-                srcR = (int)round(w11 * p11[2] + w21 * p21[2] + w12 * p12[2] + w22 * p22[2]);
+                srcB = safe_clamp_int((int)round(w11 * p11[0] + w21 * p21[0] + w12 * p12[0] + w22 * p22[0]), 0, 255);
+                srcG = safe_clamp_int((int)round(w11 * p11[1] + w21 * p21[1] + w12 * p12[1] + w22 * p22[1]), 0, 255);
+                srcR = safe_clamp_int((int)round(w11 * p11[2] + w21 * p21[2] + w12 * p12[2] + w22 * p22[2]), 0, 255);
                 if (bytesPerPixel == 4)
-                   srcA = (int)round(w11 * p11[3] + w21 * p21[3] + w12 * p12[3] + w22 * p22[3]);
+                   srcA = safe_clamp_int((int)round(w11 * p11[3] + w21 * p21[3] + w12 * p12[3] + w22 * p22[3]), 0, 255);
                 else
                    srcA = 255;
             }
