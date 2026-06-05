@@ -8242,19 +8242,29 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int startY = clamp((int)(tkY - halfH), 0, imgH - 1);
     int endY = clamp((int)(tkY + halfH), 0, imgH - 1);
 
-    int roiW = endX - startX + 1;
-    int roiH = endY - startY + 1;
-    std::vector<unsigned char> localClone;
-    int localPitch = roiW * bytesPerPixel;
-    if (!cloneData && (brushType == 7 || brushType == 8) && roiW > 0 && roiH > 0)
+    int cloneStartX = startX;
+    int cloneEndX = endX;
+    int cloneStartY = startY;
+    int cloneEndY = endY;
+    if (brushType == 6)
     {
-        // pinch and bulge brushes
-        localClone.resize((size_t)roiW * roiH * bytesPerPixel);
-        for (int ry = 0; ry < roiH; ++ry)
+        cloneStartX = clamp((int)(startX - std::max(0.0, offX)) - 2, 0, imgW - 1);
+        cloneEndX = clamp((int)(endX - std::min(0.0, offX)) + 2, 0, imgW - 1);
+        cloneStartY = clamp((int)(startY - std::max(0.0, offY)) - 2, 0, imgH - 1);
+        cloneEndY = clamp((int)(endY - std::min(0.0, offY)) + 2, 0, imgH - 1);
+    }
+    int cloneW = cloneEndX - cloneStartX + 1;
+    int cloneH = cloneEndY - cloneStartY + 1;
+    int localPitch = cloneW * bytesPerPixel;
+    std::vector<unsigned char> localClone;
+    if (!cloneData && (brushType == 6 || brushType == 7 || brushType == 8) && cloneW > 0 && cloneH > 0)
+    {
+        localClone.resize((size_t)cloneW * cloneH * bytesPerPixel);
+        for (int ry = 0; ry < cloneH; ++ry)
         {
-            int img_py = startY + ry;
+            int img_py = cloneStartY + ry;
             int img_iy = imgH - 1 - img_py;
-            unsigned char* srcRow = imgData + (INT64)img_iy * pitch + startX * bytesPerPixel;
+            unsigned char* srcRow = imgData + (INT64)img_iy * pitch + cloneStartX * bytesPerPixel;
             unsigned char* dstRow = localClone.data() + (INT64)ry * localPitch;
             memcpy(dstRow, srcRow, localPitch);
         }
@@ -8783,16 +8793,31 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 double fx = srcXf - floor(srcXf);
                 double fy = srcYf - floor(srcYf);
 
-                unsigned char* srcData = cloneData ? cloneData : imgData;
-                int srcPitch = cloneData ? clonePitch : pitch;
+                unsigned char *p11, *p21, *p12, *p22;
+                if (!localClone.empty())
+                {
+                    int lx1 = clamp(x1 - cloneStartX, 0, cloneW - 1);
+                    int ly1 = clamp(y1 - cloneStartY, 0, cloneH - 1);
+                    int lx2 = clamp(x2 - cloneStartX, 0, cloneW - 1);
+                    int ly2 = clamp(y2 - cloneStartY, 0, cloneH - 1);
 
-                int s_iy1 = imgH - 1 - y1;
-                int s_iy2 = imgH - 1 - y2;
+                    p11 = localClone.data() + (INT64)ly1 * localPitch + lx1 * bytesPerPixel;
+                    p21 = localClone.data() + (INT64)ly1 * localPitch + lx2 * bytesPerPixel;
+                    p12 = localClone.data() + (INT64)ly2 * localPitch + lx1 * bytesPerPixel;
+                    p22 = localClone.data() + (INT64)ly2 * localPitch + lx2 * bytesPerPixel;
+                } else
+                {
+                    unsigned char* srcData = cloneData ? cloneData : imgData;
+                    int srcPitch = cloneData ? clonePitch : pitch;
 
-                unsigned char* p11 = srcData + (INT64)s_iy1 * srcPitch + x1 * bytesPerPixel;
-                unsigned char* p21 = srcData + (INT64)s_iy1 * srcPitch + x2 * bytesPerPixel;
-                unsigned char* p12 = srcData + (INT64)s_iy2 * srcPitch + x1 * bytesPerPixel;
-                unsigned char* p22 = srcData + (INT64)s_iy2 * srcPitch + x2 * bytesPerPixel;
+                    int s_iy1 = imgH - 1 - y1;
+                    int s_iy2 = imgH - 1 - y2;
+
+                    p11 = srcData + (INT64)s_iy1 * srcPitch + x1 * bytesPerPixel;
+                    p21 = srcData + (INT64)s_iy1 * srcPitch + x2 * bytesPerPixel;
+                    p12 = srcData + (INT64)s_iy2 * srcPitch + x1 * bytesPerPixel;
+                    p22 = srcData + (INT64)s_iy2 * srcPitch + x2 * bytesPerPixel;
+                }
 
                 double w11 = (1.0 - fx) * (1.0 - fy);
                 double w21 = fx * (1.0 - fy);

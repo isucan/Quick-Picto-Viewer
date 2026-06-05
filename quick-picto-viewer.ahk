@@ -75680,6 +75680,12 @@ ActPaintBrushNow() {
    If (BrushToolType>6 || BrushToolType=5) && (isUserStepu=1 && stepu<brushSize/4 && isInRange(BrushToolAspectRatio, -5, 5) && isInRange(thisToolAngle, 0, 5))
       stepu := brushSize//4 + 1
 
+   If (BrushToolType=6)
+   {
+      If (isUserStepu=0 || stepu > brushSize//10)
+         stepu := clampInRange(brushSize//25, 1, 60)
+   }
+
    If (!stepu || BrushToolType>=7 || brushToolStepping=0 && brushSize>1)
       stepu := 1
 
@@ -76265,6 +76271,12 @@ ActPaintBrushLargeNow() {
    If (BrushToolType>6 || BrushToolType=5) && (isUserStepu=1 && stepu<brushSize/4 && isInRange(BrushToolAspectRatio, -5, 5) && isInRange(thisToolAngle, 0, 5))
       stepu := brushSize//4 + 1
 
+   If (BrushToolType=6)
+   {
+      If (isUserStepu=0 || stepu > brushSize//10)
+         stepu := clampInRange(brushSize//25, 1, 60)
+   }
+
    If (!stepu || BrushToolType>=7 || brushToolStepping=0 && brushSize>1)
       stepu := 1
 
@@ -76777,6 +76789,12 @@ ActDrawAlphaMaskBrushNow() {
    stepu := (isUserStepu=0) ? Ceil(brushSize * 0.2)**1.09 : brushToolStepping
    If (BrushToolType>6 || BrushToolType=5) && (isUserStepu=1 && stepu<brushSize/4 && isInRange(BrushToolAspectRatio, -5, 5) && isInRange(BrushToolAngle + 180, 0, 5))
       stepu := brushSize//4 + 1
+
+   If (BrushToolType=6)
+   {
+      If (isUserStepu=0 || stepu > brushSize//10)
+         stepu := clampInRange(brushSize//25, 1, 60)
+   }
 
    If (!stepu || BrushToolType>=7 || brushToolStepping=0)
       stepu := 1
