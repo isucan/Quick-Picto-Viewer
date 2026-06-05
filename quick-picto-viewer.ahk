@@ -75859,7 +75859,7 @@ ActPaintBrushNow() {
                If (thisWetness = 22)
                   maxSmudgeDist := 99999999
                Else
-                  maxSmudgeDist := brushSize * (0.5 + 10.0 * (thisWetness/21)**2)
+                  maxSmudgeDist := brushSize * (0.5 + 10.0 * (thisWetness/21)**3)
                fadeFactor := 1.0 - (smudgeAccDist / maxSmudgeDist)
                If (fadeFactor < 0.01)
                   fadeFactor := 0.01
@@ -76451,7 +76451,7 @@ ActPaintBrushLargeNow() {
                If (thisWetness = 22)
                   maxSmudgeDist := 99999999
                Else
-                  maxSmudgeDist := brushSize * (0.5 + 10.0 * (thisWetness/21)**2)
+                  maxSmudgeDist := brushSize * (0.5 + 10.0 * (thisWetness/21)**4)
                fadeFactor := 1.0 - (smudgeAccDist / maxSmudgeDist)
                If (fadeFactor < 0.01)
                   fadeFactor := 0.01
