@@ -6,12 +6,10 @@
 #include <wchar.h>
 #include "omp.h"
 #include "math.h"
-#include <cmath>
 #include "windows.h"
 #include <string>
 #include <sstream>
 #include <vector>
-#include <memory>
 #include <atomic>
 #include <stack>
 #include <map>
@@ -70,21 +68,6 @@ inline bool inRange(const float &low, const float &high, const float &x) {
 
 inline bool inRange(const int &low, const int &high, const int &x) {
     return (low <= x && x <= high);
-}
-
-inline double safe_clamp_double(double val, double lo, double hi) {
-    if (std::isnan(val)) return lo;
-    if (lo > hi) return lo;
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
-}
-
-inline int safe_clamp_int(int val, int lo, int hi) {
-    if (lo > hi) return lo;
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
 }
 
 int inline weighTwoValues(float A, float B, float w) {
@@ -8227,14 +8210,6 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
         return 0;
     }
 
-    // Sanitize input coordinates and offsets to prevent NaN/Inf crashes
-    if (std::isnan(tkX) || std::isinf(tkX)) tkX = 0.0;
-    if (std::isnan(tkY) || std::isinf(tkY)) tkY = 0.0;
-    if (std::isnan(angle) || std::isinf(angle)) angle = 0.0;
-    if (std::isnan(aspectRatio) || std::isinf(aspectRatio)) aspectRatio = 0.0;
-    if (std::isnan(offX) || std::isinf(offX)) offX = 0.0;
-    if (std::isnan(offY) || std::isinf(offY)) offY = 0.0;
-
     int bytesPerPixel = imgBpp / 8;
     if (bytesPerPixel != 3 && bytesPerPixel != 4)
     {
@@ -8262,42 +8237,26 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
 
     int halfW = (texData && texW > 0) ? (texW / 2 + abs(bulgePinchFactor)) : (brushSize / 2 + abs(bulgePinchFactor));
     int halfH = (texData && texH > 0) ? (texH / 2 + abs(bulgePinchFactor)) : (brushSize / 2 + abs(bulgePinchFactor));
-    int startX = (int)safe_clamp_double(tkX - halfW, 0.0, (double)(imgW - 1));
-    int endX = (int)safe_clamp_double(tkX + halfW, 0.0, (double)(imgW - 1));
-    int startY = (int)safe_clamp_double(tkY - halfH, 0.0, (double)(imgH - 1));
-    int endY = (int)safe_clamp_double(tkY + halfH, 0.0, (double)(imgH - 1));
+    int startX = clamp((int)(tkX - halfW), 0, imgW - 1);
+    int endX = clamp((int)(tkX + halfW), 0, imgW - 1);
+    int startY = clamp((int)(tkY - halfH), 0, imgH - 1);
+    int endY = clamp((int)(tkY + halfH), 0, imgH - 1);
 
-    int cloneStartX = startX;
-    int cloneEndX = endX;
-    int cloneStartY = startY;
-    int cloneEndY = endY;
-    if (brushType == 6)
+    int roiW = endX - startX + 1;
+    int roiH = endY - startY + 1;
+    std::vector<unsigned char> localClone;
+    int localPitch = roiW * bytesPerPixel;
+    if (!cloneData && (brushType == 7 || brushType == 8) && roiW > 0 && roiH > 0)
     {
-        cloneStartX = (int)safe_clamp_double(startX - std::max(0.0, offX) - 2.0, 0.0, (double)(imgW - 1));
-        cloneEndX = (int)safe_clamp_double(endX - std::min(0.0, offX) + 2.0, 0.0, (double)(imgW - 1));
-        cloneStartY = (int)safe_clamp_double(startY - std::max(0.0, offY) - 2.0, 0.0, (double)(imgH - 1));
-        cloneEndY = (int)safe_clamp_double(endY - std::min(0.0, offY) + 2.0, 0.0, (double)(imgH - 1));
-    }
-    if (cloneStartX > cloneEndX) std::swap(cloneStartX, cloneEndX);
-    if (cloneStartY > cloneEndY) std::swap(cloneStartY, cloneEndY);
-    int cloneW = cloneEndX - cloneStartX + 1;
-    int cloneH = cloneEndY - cloneStartY + 1;
-    int localPitch = cloneW * bytesPerPixel;
-    std::unique_ptr<unsigned char[]> localClone;
-    size_t allocationSize = (size_t)cloneW * cloneH * bytesPerPixel;
-    if (!cloneData && (brushType == 6 || brushType == 7 || brushType == 8) && cloneW > 0 && cloneH > 0 && allocationSize < 150 * 1024 * 1024)
-    {
-        localClone.reset(new (std::nothrow) unsigned char[allocationSize]);
-        if (localClone)
+        // pinch and bulge brushes
+        localClone.resize((size_t)roiW * roiH * bytesPerPixel);
+        for (int ry = 0; ry < roiH; ++ry)
         {
-            for (int ry = 0; ry < cloneH; ++ry)
-            {
-                int img_py = cloneStartY + ry;
-                int img_iy = imgH - 1 - img_py;
-                unsigned char* srcRow = imgData + (INT64)img_iy * pitch + cloneStartX * bytesPerPixel;
-                unsigned char* dstRow = localClone.get() + (INT64)ry * localPitch;
-                memcpy(dstRow, srcRow, localPitch);
-            }
+            int img_py = startY + ry;
+            int img_iy = imgH - 1 - img_py;
+            unsigned char* srcRow = imgData + (INT64)img_iy * pitch + startX * bytesPerPixel;
+            unsigned char* dstRow = localClone.data() + (INT64)ry * localPitch;
+            memcpy(dstRow, srcRow, localPitch);
         }
     }
 
@@ -8718,12 +8677,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             } else if (brushType == 3)
             {
                 // Cloner brush: sample from srcData
-                double srcX_dbl = (double)px - offX;
-                double srcY_dbl = (double)py - offY;
-                if (std::isnan(srcX_dbl) || std::isinf(srcX_dbl) || std::isnan(srcY_dbl) || std::isinf(srcY_dbl))
-                   continue;
-                int srcX_raw = (int)round(srcX_dbl);
-                int srcY_raw = (int)round(srcY_dbl);
+                int srcX_raw = (int)round(px - offX);
+                int srcY_raw = (int)round(py - offY);
                 if (srcX_raw < 0 || srcX_raw >= imgW || srcY_raw < 0 || srcY_raw >= imgH)
                    continue;
                 int srcX = srcX_raw;
@@ -8817,65 +8772,50 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             } else if (brushType == 6)
             {
                 // Smudge brush: grab pixels from previous offset position with bilinear interpolation
-                double srcXf = safe_clamp_double((double)px - offX, 0.0, (double)(imgW - 1));
-                double srcYf = safe_clamp_double((double)py - offY, 0.0, (double)(imgH - 1));
+                double srcXf = clamp((double)px - offX, 0.0, (double)(imgW - 1));
+                double srcYf = clamp((double)py - offY, 0.0, (double)(imgH - 1));
 
                 int x1 = (int)floor(srcXf);
                 int y1 = (int)floor(srcYf);
-                int x2 = safe_clamp_int(x1 + 1, 0, imgW - 1);
-                int y2 = safe_clamp_int(y1 + 1, 0, imgH - 1);
+                int x2 = clamp(x1 + 1, 0, imgW - 1);
+                int y2 = clamp(y1 + 1, 0, imgH - 1);
 
                 double fx = srcXf - floor(srcXf);
                 double fy = srcYf - floor(srcYf);
 
-                unsigned char *p11, *p21, *p12, *p22;
-                if (localClone)
-                {
-                    int lx1 = safe_clamp_int(x1 - cloneStartX, 0, cloneW - 1);
-                    int ly1 = safe_clamp_int(y1 - cloneStartY, 0, cloneH - 1);
-                    int lx2 = safe_clamp_int(x2 - cloneStartX, 0, cloneW - 1);
-                    int ly2 = safe_clamp_int(y2 - cloneStartY, 0, cloneH - 1);
+                unsigned char* srcData = cloneData ? cloneData : imgData;
+                int srcPitch = cloneData ? clonePitch : pitch;
 
-                    p11 = localClone.get() + (INT64)ly1 * localPitch + lx1 * bytesPerPixel;
-                    p21 = localClone.get() + (INT64)ly1 * localPitch + lx2 * bytesPerPixel;
-                    p12 = localClone.get() + (INT64)ly2 * localPitch + lx1 * bytesPerPixel;
-                    p22 = localClone.get() + (INT64)ly2 * localPitch + lx2 * bytesPerPixel;
-                } else
-                {
-                    unsigned char* srcData = cloneData ? cloneData : imgData;
-                    int srcPitch = cloneData ? clonePitch : pitch;
+                int s_iy1 = imgH - 1 - y1;
+                int s_iy2 = imgH - 1 - y2;
 
-                    int s_iy1 = imgH - 1 - y1;
-                    int s_iy2 = imgH - 1 - y2;
-
-                    p11 = srcData + (INT64)s_iy1 * srcPitch + x1 * bytesPerPixel;
-                    p21 = srcData + (INT64)s_iy1 * srcPitch + x2 * bytesPerPixel;
-                    p12 = srcData + (INT64)s_iy2 * srcPitch + x1 * bytesPerPixel;
-                    p22 = srcData + (INT64)s_iy2 * srcPitch + x2 * bytesPerPixel;
-                }
+                unsigned char* p11 = srcData + (INT64)s_iy1 * srcPitch + x1 * bytesPerPixel;
+                unsigned char* p21 = srcData + (INT64)s_iy1 * srcPitch + x2 * bytesPerPixel;
+                unsigned char* p12 = srcData + (INT64)s_iy2 * srcPitch + x1 * bytesPerPixel;
+                unsigned char* p22 = srcData + (INT64)s_iy2 * srcPitch + x2 * bytesPerPixel;
 
                 double w11 = (1.0 - fx) * (1.0 - fy);
                 double w21 = fx * (1.0 - fy);
                 double w12 = (1.0 - fx) * fy;
                 double w22 = fx * fy;
 
-                srcB = safe_clamp_int((int)round(w11 * p11[0] + w21 * p21[0] + w12 * p12[0] + w22 * p22[0]), 0, 255);
-                srcG = safe_clamp_int((int)round(w11 * p11[1] + w21 * p21[1] + w12 * p12[1] + w22 * p22[1]), 0, 255);
-                srcR = safe_clamp_int((int)round(w11 * p11[2] + w21 * p21[2] + w12 * p12[2] + w22 * p22[2]), 0, 255);
+                srcB = (int)round(w11 * p11[0] + w21 * p21[0] + w12 * p12[0] + w22 * p22[0]);
+                srcG = (int)round(w11 * p11[1] + w21 * p21[1] + w12 * p12[1] + w22 * p22[1]);
+                srcR = (int)round(w11 * p11[2] + w21 * p21[2] + w12 * p12[2] + w22 * p22[2]);
                 if (bytesPerPixel == 4)
-                   srcA = safe_clamp_int((int)round(w11 * p11[3] + w21 * p21[3] + w12 * p12[3] + w22 * p22[3]), 0, 255);
+                   srcA = (int)round(w11 * p11[3] + w21 * p21[3] + w12 * p12[3] + w22 * p22[3]);
                 else
                    srcA = 255;
             } else if (brushType == 7 || brushType == 8)
             {
                 // Pinch / Bulge brush: scale coordinate mapping with bilinear interpolation
-                double srcXf = safe_clamp_double(tkX + src_dx, 0.0, (double)(imgW - 1));
-                double srcYf = safe_clamp_double(tkY + src_dy, 0.0, (double)(imgH - 1));
+                double srcXf = clamp(tkX + src_dx, 0.0, (double)(imgW - 1));
+                double srcYf = clamp(tkY + src_dy, 0.0, (double)(imgH - 1));
 
                 int x1 = (int)floor(srcXf);
                 int y1 = (int)floor(srcYf);
-                int x2 = safe_clamp_int(x1 + 1, 0, imgW - 1);
-                int y2 = safe_clamp_int(y1 + 1, 0, imgH - 1);
+                int x2 = clamp(x1 + 1, 0, imgW - 1);
+                int y2 = clamp(y1 + 1, 0, imgH - 1);
 
                 double fx = srcXf - floor(srcXf);
                 double fy = srcYf - floor(srcYf);
@@ -8886,17 +8826,17 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 double w22 = fx * fy;
 
                 unsigned char *p11, *p21, *p12, *p22;
-                if (localClone)
+                if (!localClone.empty())
                 {
-                    int lx1 = safe_clamp_int(x1 - cloneStartX, 0, cloneW - 1);
-                    int ly1 = safe_clamp_int(y1 - cloneStartY, 0, cloneH - 1);
-                    int lx2 = safe_clamp_int(x2 - cloneStartX, 0, cloneW - 1);
-                    int ly2 = safe_clamp_int(y2 - cloneStartY, 0, cloneH - 1);
+                    int lx1 = clamp(x1 - startX, 0, roiW - 1);
+                    int ly1 = clamp(y1 - startY, 0, roiH - 1);
+                    int lx2 = clamp(x2 - startX, 0, roiW - 1);
+                    int ly2 = clamp(y2 - startY, 0, roiH - 1);
 
-                    p11 = localClone.get() + (INT64)ly1 * localPitch + lx1 * bytesPerPixel;
-                    p21 = localClone.get() + (INT64)ly1 * localPitch + lx2 * bytesPerPixel;
-                    p12 = localClone.get() + (INT64)ly2 * localPitch + lx1 * bytesPerPixel;
-                    p22 = localClone.get() + (INT64)ly2 * localPitch + lx2 * bytesPerPixel;
+                    p11 = localClone.data() + (INT64)ly1 * localPitch + lx1 * bytesPerPixel;
+                    p21 = localClone.data() + (INT64)ly1 * localPitch + lx2 * bytesPerPixel;
+                    p12 = localClone.data() + (INT64)ly2 * localPitch + lx1 * bytesPerPixel;
+                    p22 = localClone.data() + (INT64)ly2 * localPitch + lx2 * bytesPerPixel;
                 } else
                 {
                     unsigned char* srcData = cloneData ? cloneData : imgData;
@@ -8911,11 +8851,11 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                     p22 = srcData + (INT64)s_iy2 * srcPitch + x2 * bytesPerPixel;
                 }
 
-                srcB = safe_clamp_int((int)round(w11 * p11[0] + w21 * p21[0] + w12 * p12[0] + w22 * p22[0]), 0, 255);
-                srcG = safe_clamp_int((int)round(w11 * p11[1] + w21 * p21[1] + w12 * p12[1] + w22 * p22[1]), 0, 255);
-                srcR = safe_clamp_int((int)round(w11 * p11[2] + w21 * p21[2] + w12 * p12[2] + w22 * p22[2]), 0, 255);
+                srcB = (int)round(w11 * p11[0] + w21 * p21[0] + w12 * p12[0] + w22 * p22[0]);
+                srcG = (int)round(w11 * p11[1] + w21 * p21[1] + w12 * p12[1] + w22 * p22[1]);
+                srcR = (int)round(w11 * p11[2] + w21 * p21[2] + w12 * p12[2] + w22 * p22[2]);
                 if (bytesPerPixel == 4)
-                   srcA = safe_clamp_int((int)round(w11 * p11[3] + w21 * p21[3] + w12 * p12[3] + w22 * p22[3]), 0, 255);
+                   srcA = (int)round(w11 * p11[3] + w21 * p21[3] + w12 * p12[3] + w22 * p22[3]);
                 else
                    srcA = 255;
             }
@@ -8945,3 +8885,4 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     }
     return 1;
 }
+

@@ -75483,6 +75483,7 @@ calcBrushSymmetryCoords(tkX, tkY, imgW, imgH, ByRef skX, ByRef skY) {
 ActPaintBrushNow() {
    Critical, on
    Static lastInvoked := 1, prevMX, prevMY
+
    If (A_TickCount - lastOtherWinClose<450)
       Return
 
@@ -75676,20 +75677,14 @@ ActPaintBrushNow() {
       isUserStepu := 0
 
    stepu := (isUserStepu=0 || brushSize<2) ? Ceil(brushSize * 0.2)**1.09 : brushToolStepping
-   If (BrushToolType>6 || BrushToolType=5) && (isUserStepu=1 && stepu<brushSize/4 && isInRange(BrushToolAspectRatio, -5, 5) && isInRange(thisToolAngle, 0, 5))
+   If (BrushToolType=5 && (isUserStepu=1 && stepu<brushSize/4 && isInRange(BrushToolAspectRatio, -5, 5) && isInRange(thisToolAngle, 0, 5)))
       stepu := brushSize//4 + 1
 
-   If (BrushToolType=6)
-   {
-      If (isUserStepu=0 || stepu>brushSize//10)
-      {
-         t_wet := thisWetness / 22.0
-         stepu := clampInRange(brushSize * (0.02 + 0.18 * t_wet), 2, 15 + 280 * t_wet)
-      }
-   }
-
-   If (!stepu || BrushToolType>=7 || brushToolStepping=0 && brushSize>1)
+   If (!stepu || brushToolStepping=0 && brushSize>1)
       stepu := 1
+
+   If (BrushToolType>=7)
+      stepu := 2
 
    If !GetKeyState("Shift", "P")
       prevMX := prevMY := 0
@@ -75858,7 +75853,7 @@ ActPaintBrushNow() {
             If (BrushToolType=6)
             {
                t_wet := thisWetness / 22.0
-               smudgeStrength := clampInRange(brushSize * (0.05 * 80 ** t_wet), 5, brushSize * 4)
+               smudgeStrength := clampInRange(brushSize * (0.05 + 0.95 * t_wet), 5, brushSize)
                cur_offX := dirX * clampInRange(distStepX, 1, smudgeStrength)
                cur_offY := dirY * clampInRange(distStepY, 1, smudgeStrength)
 
@@ -75867,7 +75862,7 @@ ActPaintBrushNow() {
                If (thisWetness = 22)
                   maxSmudgeDist := 99999999
                Else
-                  maxSmudgeDist := brushSize * (0.5 + 10.0 * (thisWetness/21)**4)
+                  maxSmudgeDist := brushSize * (0.5 + 10.0 * (thisWetness/21)**3)
                fadeFactor := 1.0 - (smudgeAccDist / maxSmudgeDist)
                If (fadeFactor < 0.01)
                   fadeFactor := 0.01
@@ -76270,20 +76265,14 @@ ActPaintBrushLargeNow() {
       isUserStepu := 0
 
    stepu := (isUserStepu=0 || brushSize<2) ? Ceil(brushSize * 0.2)**1.09 : brushToolStepping
-   If (BrushToolType>6 || BrushToolType=5) && (isUserStepu=1 && stepu<brushSize/4 && isInRange(BrushToolAspectRatio, -5, 5) && isInRange(thisToolAngle, 0, 5))
+   If (BrushToolType=5 && (isUserStepu=1 && stepu<brushSize/4 && isInRange(BrushToolAspectRatio, -5, 5) && isInRange(thisToolAngle, 0, 5)))
       stepu := brushSize//4 + 1
 
-   If (BrushToolType=6)
-   {
-      If (isUserStepu=0 || stepu>brushSize//10)
-      {
-         t_wet := thisWetness / 22.0
-         stepu := clampInRange(brushSize * (0.02 + 0.18 * t_wet), 2, 15 + 280 * t_wet)
-      }
-   }
-
-   If (!stepu || BrushToolType>=7 || brushToolStepping=0 && brushSize>1)
+   If (!stepu || brushToolStepping=0 && brushSize>1)
       stepu := 1
+
+   If (BrushToolType>=7)
+      stepu := 2
 
    If !GetKeyState("Shift", "P")
       prevMX := prevMY := 0
@@ -76459,7 +76448,7 @@ ActPaintBrushLargeNow() {
                ; Smudge brush: offset = step displacement in the movement direction,
                ; scaled by wetness-based smudge strength factor.
                t_wet := thisWetness / 22.0
-               smudgeStrength := clampInRange(brushSize * (0.05 * 80 ** t_wet), 5, brushSize * 4)
+               smudgeStrength := clampInRange(brushSize * (0.05 + 0.95 * t_wet), 5, brushSize)
                cur_offX := dirX * clampInRange(distStepX, 1, smudgeStrength)
                cur_offY := dirY * clampInRange(distStepY, 1, smudgeStrength)
 
@@ -76795,8 +76784,8 @@ ActDrawAlphaMaskBrushNow() {
    If (BrushToolType>6 || BrushToolType=5) && (isUserStepu=1 && stepu<brushSize/4 && isInRange(BrushToolAspectRatio, -5, 5) && isInRange(BrushToolAngle + 180, 0, 5))
       stepu := brushSize//4 + 1
 
-   If !stepu
-      stepu := 2
+   If (!stepu || BrushToolType>=7 || brushToolStepping=0)
+      stepu := 1
 
    If !GetKeyState("Shift", "P")
       prevMX := prevMY := 0
@@ -102634,4 +102623,3 @@ testKeysStuff() {
 
    ToolTip, % ppA "`n" ppB , , , 2
 }
-
