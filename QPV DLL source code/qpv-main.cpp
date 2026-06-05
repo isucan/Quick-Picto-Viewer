@@ -8248,17 +8248,17 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int cloneEndY = endY;
     double cloneOffsetX = offX;
     double cloneOffsetY = offY;
-    if (brushType == 6)
+    if (brushType==6)
     {
         double scale = 3.0;
         if (bulgePinchFactor > 0)
         {
             int wetness = bulgePinchFactor - 1;
-            scale = 1.0 + 4.0 * (wetness / 22.0);
+            scale = 1.0 + 16.0 * (wetness / 22.0);
         }
+
         cloneOffsetX = offX * scale;
         cloneOffsetY = offY * scale;
-
         cloneStartX = clamp((int)floor(startX - std::max(0.0, cloneOffsetX)) - 2, 0, imgW - 1);
         cloneEndX = clamp((int)ceil(endX - std::min(0.0, cloneOffsetX)) + 2, 0, imgW - 1);
         cloneStartY = clamp((int)floor(startY - std::max(0.0, cloneOffsetY)) - 2, 0, imgH - 1);
@@ -8522,7 +8522,6 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             double B_coeff = Y * B_term_factor;
             double C_coeff = Y * Y * C_term_factor - 1.0;
             double discriminant = B_coeff * B_coeff - 4.0 * A_coeff * C_coeff;
-
             if (discriminant < 0)
                continue; // The row does not intersect the ellipse/circle
 
@@ -8585,14 +8584,14 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
 
                 if (softness>0)
                 {
-                    if (dist_norm_sq >= falloff_sq)
+                    if (dist_norm_sq>=falloff_sq)
                     {
                         // Only compute sqrt if we are in the outer soft boundary
                         double dist_norm = sqrt(dist_norm_sq);
                         mask_val = (int)(255.0 * (1.0 - dist_norm) / (1.0 - falloff));
-                        if (mask_val < 0)
+                        if (mask_val<0)
                            mask_val = 0;
-                        if (mask_val > 255)
+                        if (mask_val>255)
                            mask_val = 255;
                     }
                 }
@@ -8601,20 +8600,19 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             if (mask_val==0)
                continue;
 
-            if (brushType == 7 || brushType == 8)
+            if (brushType==7 || brushType==8)
             {
                 // bulge/pinch brushes
                 double r_dest = sqrt(dx * dx + dy * dy);
                 double R = brushSize / 2.0;
-                if (r_dest >= R)
-                    continue;
+                if (r_dest>=R)
+                   continue;
 
-                if (r_dest < 1e-6)
+                if (r_dest<1e-6)
                 {
                     src_dx = 0.0;
                     src_dy = 0.0;
-                }
-                else
+                } else
                 {
                     double r = r_dest / R;
                     // Extract wetness from bulgePinchFactor
@@ -8628,9 +8626,9 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                     double t2 = t * t;
                     double p = 1.0;
                     if (brushType == 8) // bulge
-                        p = 1.0 + 7.0 * (t2/3);
+                        p = 1.0 + 7.0 * (t2/5);
                     else // pinch
-                        p = 1.0 - 0.9 * t2;
+                        p = 1.0 - 0.9 * (t2/2);
 
                     double warped_r = R * pow(r, p);
                     double warped_dx = dx * (warped_r / r_dest);
@@ -8662,13 +8660,9 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int srcR = tgtR;
             int srcA = tgtA;
             float weight = (mask_val / 255.0f) * opaf;
-            if (brushType == 7 || brushType == 8)
+            if (brushType==6)
             {
-                weight = opaf;
-            }
-            else if (brushType == 6)
-            {
-                if (bulgePinchFactor > 0)
+                if (bulgePinchFactor>0)
                 {
                     int wetness = bulgePinchFactor - 1;
                     if (wetness > 15)
@@ -8676,12 +8670,12 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                         double weight_boost = 1.0 + 1.5 * ((wetness - 15) / 7.0);
                         weight = clamp((float)(weight * weight_boost), 0.0f, 1.0f);
                     }
-                }
-                else
+                } else
                 {
                     weight = clamp(weight * 1.5f, 0.0f, 1.0f);
                 }
             }
+
             if (brushType<=5 && brushOverDraw==0 && overDrawOkay==1)
             {
                 int cx = px >> 7;

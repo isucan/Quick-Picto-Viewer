@@ -75483,7 +75483,6 @@ calcBrushSymmetryCoords(tkX, tkY, imgW, imgH, ByRef skX, ByRef skY) {
 ActPaintBrushNow() {
    Critical, on
    Static lastInvoked := 1, prevMX, prevMY
-
    If (A_TickCount - lastOtherWinClose<450)
       Return
 
@@ -75572,7 +75571,7 @@ ActPaintBrushNow() {
    If (BrushToolType=7)
       thisBulgePinchFactor := -BrushToolWetness - 1
    Else If (BrushToolType=6)
-      thisBulgePinchFactor := 0
+      thisBulgePinchFactor := BrushToolWetness
 
    oMx := kX, oMy := kY
    o_brushSize := brushSize := (BrushToolDoubleSize=1) ? BrushToolSize*2 : brushToolSize
@@ -76172,7 +76171,7 @@ ActPaintBrushLargeNow() {
    If (BrushToolType=7)
       thisBulgePinchFactor := -BrushToolWetness - 1
    Else If (BrushToolType=6)
-      thisBulgePinchFactor := 0
+      thisBulgePinchFactor := BrushToolWetness
 
    thisToolSoftness := (BrushToolType>1) ? BrushToolSoftness : 1
    If (BrushToolRandomSoftness>0 && BrushToolType>1)
