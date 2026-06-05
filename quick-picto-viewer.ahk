@@ -75855,7 +75855,7 @@ ActPaintBrushNow() {
             If (BrushToolType=6)
             {
                t_wet := thisWetness / 22.0
-               smudgeStrength := clampInRange(brushSize * (0.05 + 0.95 * t_wet), 5, brushSize)
+               smudgeStrength := clampInRange(brushSize * (0.05 * 80 ** t_wet), 5, brushSize * 4)
                cur_offX := dirX * clampInRange(distStepX, 1, smudgeStrength)
                cur_offY := dirY * clampInRange(distStepY, 1, smudgeStrength)
 
@@ -76453,7 +76453,7 @@ ActPaintBrushLargeNow() {
                ; Smudge brush: offset = step displacement in the movement direction,
                ; scaled by wetness-based smudge strength factor.
                t_wet := thisWetness / 22.0
-               smudgeStrength := clampInRange(brushSize * (0.05 + 0.95 * t_wet), 5, brushSize)
+               smudgeStrength := clampInRange(brushSize * (0.05 * 80 ** t_wet), 5, brushSize * 4)
                cur_offX := dirX * clampInRange(distStepX, 1, smudgeStrength)
                cur_offY := dirY * clampInRange(distStepY, 1, smudgeStrength)
 
