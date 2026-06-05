@@ -75682,7 +75682,10 @@ ActPaintBrushNow() {
    If (BrushToolType=6)
    {
       If (isUserStepu=0 || stepu>brushSize//10)
-         stepu := clampInRange(brushSize//5, 2, 295)
+      {
+         t_wet := thisWetness / 22.0
+         stepu := clampInRange(brushSize * (0.02 + 0.18 * t_wet), 2, 15 + 280 * t_wet)
+      }
    }
 
    If (!stepu || BrushToolType>=7 || brushToolStepping=0 && brushSize>1)
@@ -76273,7 +76276,10 @@ ActPaintBrushLargeNow() {
    If (BrushToolType=6)
    {
       If (isUserStepu=0 || stepu>brushSize//10)
-         stepu := clampInRange(brushSize//5, 2, 295)
+      {
+         t_wet := thisWetness / 22.0
+         stepu := clampInRange(brushSize * (0.02 + 0.18 * t_wet), 2, 15 + 280 * t_wet)
+      }
    }
 
    If (!stepu || BrushToolType>=7 || brushToolStepping=0 && brushSize>1)
