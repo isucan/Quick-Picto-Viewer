@@ -8246,12 +8246,23 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int cloneEndX = endX;
     int cloneStartY = startY;
     int cloneEndY = endY;
+    double cloneOffsetX = offX;
+    double cloneOffsetY = offY;
     if (brushType == 6)
     {
-        cloneStartX = clamp((int)floor(startX - std::max(0.0, offX)) - 2, 0, imgW - 1);
-        cloneEndX = clamp((int)ceil(endX - std::min(0.0, offX)) + 2, 0, imgW - 1);
-        cloneStartY = clamp((int)floor(startY - std::max(0.0, offY)) - 2, 0, imgH - 1);
-        cloneEndY = clamp((int)ceil(endY - std::min(0.0, offY)) + 2, 0, imgH - 1);
+        double scale = 3.0;
+        if (bulgePinchFactor > 0)
+        {
+            int wetness = bulgePinchFactor - 1;
+            scale = 1.0 + 4.0 * (wetness / 22.0);
+        }
+        cloneOffsetX = offX * scale;
+        cloneOffsetY = offY * scale;
+
+        cloneStartX = clamp((int)floor(startX - std::max(0.0, cloneOffsetX)) - 2, 0, imgW - 1);
+        cloneEndX = clamp((int)ceil(endX - std::min(0.0, cloneOffsetX)) + 2, 0, imgW - 1);
+        cloneStartY = clamp((int)floor(startY - std::max(0.0, cloneOffsetY)) - 2, 0, imgH - 1);
+        cloneEndY = clamp((int)ceil(endY - std::min(0.0, cloneOffsetY)) + 2, 0, imgH - 1);
     }
 
     int cloneW = cloneEndX - cloneStartX + 1;
@@ -8652,7 +8663,25 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int srcA = tgtA;
             float weight = (mask_val / 255.0f) * opaf;
             if (brushType == 7 || brushType == 8)
+            {
                 weight = opaf;
+            }
+            else if (brushType == 6)
+            {
+                if (bulgePinchFactor > 0)
+                {
+                    int wetness = bulgePinchFactor - 1;
+                    if (wetness > 15)
+                    {
+                        double weight_boost = 1.0 + 1.5 * ((wetness - 15) / 7.0);
+                        weight = clamp((float)(weight * weight_boost), 0.0f, 1.0f);
+                    }
+                }
+                else
+                {
+                    weight = clamp(weight * 1.5f, 0.0f, 1.0f);
+                }
+            }
             if (brushType<=5 && brushOverDraw==0 && overDrawOkay==1)
             {
                 int cx = px >> 7;
@@ -8791,8 +8820,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             } else if (brushType == 6)
             {
                 // Smudge brush: grab pixels from previous offset position with bilinear interpolation
-                double srcXf = clamp((double)px - offX, 0.0, (double)(imgW - 1));
-                double srcYf = clamp((double)py - offY, 0.0, (double)(imgH - 1));
+                double srcXf = clamp((double)px - cloneOffsetX, 0.0, (double)(imgW - 1));
+                double srcYf = clamp((double)py - cloneOffsetY, 0.0, (double)(imgH - 1));
 
                 int x1 = (int)floor(srcXf);
                 int y1 = (int)floor(srcYf);
