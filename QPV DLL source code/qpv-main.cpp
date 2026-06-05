@@ -8595,14 +8595,15 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                     if (t < 0.0) t = 0.0;
                     if (t > 1.0) t = 1.0;
 
+                    double t3 = t * t * t;
                     double p = 1.0;
                     if (brushType == 8) // bulge
                     {
-                        p = 1.0 + 7.0 * t;
+                        p = 1.0 + 7.0 * t3;
                     }
                     else // pinch
                     {
-                        p = 1.0 - 0.9 * t;
+                        p = 1.0 - 0.9 * t3;
                     }
 
                     double warped_r = R * pow(r, p);
