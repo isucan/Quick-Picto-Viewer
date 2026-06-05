@@ -8591,20 +8591,16 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                     // bulgePinchFactor = wetness + 1 (for bulge)
                     // bulgePinchFactor = -wetness - 1 (for pinch)
                     double wetness = (brushType == 8) ? (double)(bulgePinchFactor - 1) : (double)(-bulgePinchFactor - 1);
-                    double t = wetness / 22.0;
+                    double t = wetness / 32.0;
                     if (t < 0.0) t = 0.0;
                     if (t > 1.0) t = 1.0;
 
-                    double t3 = t * t * t;
+                    double t2 = t * t;
                     double p = 1.0;
                     if (brushType == 8) // bulge
-                    {
-                        p = 1.0 + 7.0 * t3;
-                    }
+                        p = 1.0 + 7.0 * (t2/3);
                     else // pinch
-                    {
-                        p = 1.0 - 0.9 * t3;
-                    }
+                        p = 1.0 - 0.9 * t2;
 
                     double warped_r = R * pow(r, p);
                     double warped_dx = dx * (warped_r / r_dest);
