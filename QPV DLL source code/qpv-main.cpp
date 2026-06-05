@@ -8853,10 +8853,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 unsigned char *p11, *p21, *p12, *p22;
                 if (!localClone.empty())
                 {
-                    int lx1 = clamp(x1 - startX, 0, roiW - 1);
-                    int ly1 = clamp(y1 - startY, 0, roiH - 1);
-                    int lx2 = clamp(x2 - startX, 0, roiW - 1);
-                    int ly2 = clamp(y2 - startY, 0, roiH - 1);
+                    int lx1 = clamp(x1 - cloneStartX, 0, cloneW - 1);
+                    int ly1 = clamp(y1 - cloneStartY, 0, cloneH - 1);
+                    int lx2 = clamp(x2 - cloneStartX, 0, cloneW - 1);
+                    int ly2 = clamp(y2 - cloneStartY, 0, cloneH - 1);
 
                     p11 = localClone.data() + (INT64)ly1 * localPitch + lx1 * bytesPerPixel;
                     p21 = localClone.data() + (INT64)ly1 * localPitch + lx2 * bytesPerPixel;
