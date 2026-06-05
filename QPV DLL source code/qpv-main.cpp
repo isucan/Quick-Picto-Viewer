@@ -8257,16 +8257,21 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int cloneH = cloneEndY - cloneStartY + 1;
     int localPitch = cloneW * bytesPerPixel;
     std::vector<unsigned char> localClone;
-    if (!cloneData && (brushType == 6 || brushType == 7 || brushType == 8) && cloneW > 0 && cloneH > 0)
+    size_t allocationSize = (size_t)cloneW * cloneH * bytesPerPixel;
+    if (!cloneData && (brushType == 6 || brushType == 7 || brushType == 8) && cloneW > 0 && cloneH > 0 && allocationSize < 150 * 1024 * 1024)
     {
-        localClone.resize((size_t)cloneW * cloneH * bytesPerPixel);
-        for (int ry = 0; ry < cloneH; ++ry)
-        {
-            int img_py = cloneStartY + ry;
-            int img_iy = imgH - 1 - img_py;
-            unsigned char* srcRow = imgData + (INT64)img_iy * pitch + cloneStartX * bytesPerPixel;
-            unsigned char* dstRow = localClone.data() + (INT64)ry * localPitch;
-            memcpy(dstRow, srcRow, localPitch);
+        try {
+            localClone.resize(allocationSize);
+            for (int ry = 0; ry < cloneH; ++ry)
+            {
+                int img_py = cloneStartY + ry;
+                int img_iy = imgH - 1 - img_py;
+                unsigned char* srcRow = imgData + (INT64)img_iy * pitch + cloneStartX * bytesPerPixel;
+                unsigned char* dstRow = localClone.data() + (INT64)ry * localPitch;
+                memcpy(dstRow, srcRow, localPitch);
+            }
+        } catch (...) {
+            localClone.clear();
         }
     }
 
