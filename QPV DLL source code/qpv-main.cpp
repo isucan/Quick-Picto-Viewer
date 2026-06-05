@@ -6,6 +6,7 @@
 #include <wchar.h>
 #include "omp.h"
 #include "math.h"
+#include <cmath>
 #include "windows.h"
 #include <string>
 #include <sstream>
@@ -68,6 +69,21 @@ inline bool inRange(const float &low, const float &high, const float &x) {
 
 inline bool inRange(const int &low, const int &high, const int &x) {
     return (low <= x && x <= high);
+}
+
+inline double safe_clamp_double(double val, double lo, double hi) {
+    if (std::isnan(val)) return lo;
+    if (lo > hi) return lo;
+    if (val < lo) return lo;
+    if (val > hi) return hi;
+    return val;
+}
+
+inline int safe_clamp_int(int val, int lo, int hi) {
+    if (lo > hi) return lo;
+    if (val < lo) return lo;
+    if (val > hi) return hi;
+    return val;
 }
 
 int inline weighTwoValues(float A, float B, float w) {
@@ -8210,6 +8226,14 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
         return 0;
     }
 
+    // Sanitize input coordinates and offsets to prevent NaN/Inf crashes
+    if (std::isnan(tkX) || std::isinf(tkX)) tkX = 0.0;
+    if (std::isnan(tkY) || std::isinf(tkY)) tkY = 0.0;
+    if (std::isnan(angle) || std::isinf(angle)) angle = 0.0;
+    if (std::isnan(aspectRatio) || std::isinf(aspectRatio)) aspectRatio = 0.0;
+    if (std::isnan(offX) || std::isinf(offX)) offX = 0.0;
+    if (std::isnan(offY) || std::isinf(offY)) offY = 0.0;
+
     int bytesPerPixel = imgBpp / 8;
     if (bytesPerPixel != 3 && bytesPerPixel != 4)
     {
@@ -8237,10 +8261,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
 
     int halfW = (texData && texW > 0) ? (texW / 2 + abs(bulgePinchFactor)) : (brushSize / 2 + abs(bulgePinchFactor));
     int halfH = (texData && texH > 0) ? (texH / 2 + abs(bulgePinchFactor)) : (brushSize / 2 + abs(bulgePinchFactor));
-    int startX = clamp((int)(tkX - halfW), 0, imgW - 1);
-    int endX = clamp((int)(tkX + halfW), 0, imgW - 1);
-    int startY = clamp((int)(tkY - halfH), 0, imgH - 1);
-    int endY = clamp((int)(tkY + halfH), 0, imgH - 1);
+    int startX = (int)safe_clamp_double(tkX - halfW, 0.0, (double)(imgW - 1));
+    int endX = (int)safe_clamp_double(tkX + halfW, 0.0, (double)(imgW - 1));
+    int startY = (int)safe_clamp_double(tkY - halfH, 0.0, (double)(imgH - 1));
+    int endY = (int)safe_clamp_double(tkY + halfH, 0.0, (double)(imgH - 1));
 
     int cloneStartX = startX;
     int cloneEndX = endX;
@@ -8248,11 +8272,13 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int cloneEndY = endY;
     if (brushType == 6)
     {
-        cloneStartX = clamp((int)(startX - std::max(0.0, offX)) - 2, 0, imgW - 1);
-        cloneEndX = clamp((int)(endX - std::min(0.0, offX)) + 2, 0, imgW - 1);
-        cloneStartY = clamp((int)(startY - std::max(0.0, offY)) - 2, 0, imgH - 1);
-        cloneEndY = clamp((int)(endY - std::min(0.0, offY)) + 2, 0, imgH - 1);
+        cloneStartX = (int)safe_clamp_double(startX - std::max(0.0, offX) - 2.0, 0.0, (double)(imgW - 1));
+        cloneEndX = (int)safe_clamp_double(endX - std::min(0.0, offX) + 2.0, 0.0, (double)(imgW - 1));
+        cloneStartY = (int)safe_clamp_double(startY - std::max(0.0, offY) - 2.0, 0.0, (double)(imgH - 1));
+        cloneEndY = (int)safe_clamp_double(endY - std::min(0.0, offY) + 2.0, 0.0, (double)(imgH - 1));
     }
+    if (cloneStartX > cloneEndX) std::swap(cloneStartX, cloneEndX);
+    if (cloneStartY > cloneEndY) std::swap(cloneStartY, cloneEndY);
     int cloneW = cloneEndX - cloneStartX + 1;
     int cloneH = cloneEndY - cloneStartY + 1;
     int localPitch = cloneW * bytesPerPixel;
@@ -8692,8 +8718,12 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             } else if (brushType == 3)
             {
                 // Cloner brush: sample from srcData
-                int srcX_raw = (int)round(px - offX);
-                int srcY_raw = (int)round(py - offY);
+                double srcX_dbl = (double)px - offX;
+                double srcY_dbl = (double)py - offY;
+                if (std::isnan(srcX_dbl) || std::isinf(srcX_dbl) || std::isnan(srcY_dbl) || std::isinf(srcY_dbl))
+                   continue;
+                int srcX_raw = (int)round(srcX_dbl);
+                int srcY_raw = (int)round(srcY_dbl);
                 if (srcX_raw < 0 || srcX_raw >= imgW || srcY_raw < 0 || srcY_raw >= imgH)
                    continue;
                 int srcX = srcX_raw;
@@ -8787,13 +8817,13 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             } else if (brushType == 6)
             {
                 // Smudge brush: grab pixels from previous offset position with bilinear interpolation
-                double srcXf = clamp((double)px - offX, 0.0, (double)(imgW - 1));
-                double srcYf = clamp((double)py - offY, 0.0, (double)(imgH - 1));
+                double srcXf = safe_clamp_double((double)px - offX, 0.0, (double)(imgW - 1));
+                double srcYf = safe_clamp_double((double)py - offY, 0.0, (double)(imgH - 1));
 
                 int x1 = (int)floor(srcXf);
                 int y1 = (int)floor(srcYf);
-                int x2 = clamp(x1 + 1, 0, imgW - 1);
-                int y2 = clamp(y1 + 1, 0, imgH - 1);
+                int x2 = safe_clamp_int(x1 + 1, 0, imgW - 1);
+                int y2 = safe_clamp_int(y1 + 1, 0, imgH - 1);
 
                 double fx = srcXf - floor(srcXf);
                 double fy = srcYf - floor(srcYf);
@@ -8801,10 +8831,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 unsigned char *p11, *p21, *p12, *p22;
                 if (!localClone.empty())
                 {
-                    int lx1 = clamp(x1 - cloneStartX, 0, cloneW - 1);
-                    int ly1 = clamp(y1 - cloneStartY, 0, cloneH - 1);
-                    int lx2 = clamp(x2 - cloneStartX, 0, cloneW - 1);
-                    int ly2 = clamp(y2 - cloneStartY, 0, cloneH - 1);
+                    int lx1 = safe_clamp_int(x1 - cloneStartX, 0, cloneW - 1);
+                    int ly1 = safe_clamp_int(y1 - cloneStartY, 0, cloneH - 1);
+                    int lx2 = safe_clamp_int(x2 - cloneStartX, 0, cloneW - 1);
+                    int ly2 = safe_clamp_int(y2 - cloneStartY, 0, cloneH - 1);
 
                     p11 = localClone.data() + (INT64)ly1 * localPitch + lx1 * bytesPerPixel;
                     p21 = localClone.data() + (INT64)ly1 * localPitch + lx2 * bytesPerPixel;
@@ -8839,13 +8869,13 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             } else if (brushType == 7 || brushType == 8)
             {
                 // Pinch / Bulge brush: scale coordinate mapping with bilinear interpolation
-                double srcXf = clamp(tkX + src_dx, 0.0, (double)(imgW - 1));
-                double srcYf = clamp(tkY + src_dy, 0.0, (double)(imgH - 1));
+                double srcXf = safe_clamp_double(tkX + src_dx, 0.0, (double)(imgW - 1));
+                double srcYf = safe_clamp_double(tkY + src_dy, 0.0, (double)(imgH - 1));
 
                 int x1 = (int)floor(srcXf);
                 int y1 = (int)floor(srcYf);
-                int x2 = clamp(x1 + 1, 0, imgW - 1);
-                int y2 = clamp(y1 + 1, 0, imgH - 1);
+                int x2 = safe_clamp_int(x1 + 1, 0, imgW - 1);
+                int y2 = safe_clamp_int(y1 + 1, 0, imgH - 1);
 
                 double fx = srcXf - floor(srcXf);
                 double fy = srcYf - floor(srcYf);
@@ -8858,10 +8888,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 unsigned char *p11, *p21, *p12, *p22;
                 if (!localClone.empty())
                 {
-                    int lx1 = clamp(x1 - cloneStartX, 0, cloneW - 1);
-                    int ly1 = clamp(y1 - cloneStartY, 0, cloneH - 1);
-                    int lx2 = clamp(x2 - cloneStartX, 0, cloneW - 1);
-                    int ly2 = clamp(y2 - cloneStartY, 0, cloneH - 1);
+                    int lx1 = safe_clamp_int(x1 - cloneStartX, 0, cloneW - 1);
+                    int ly1 = safe_clamp_int(y1 - cloneStartY, 0, cloneH - 1);
+                    int lx2 = safe_clamp_int(x2 - cloneStartX, 0, cloneW - 1);
+                    int ly2 = safe_clamp_int(y2 - cloneStartY, 0, cloneH - 1);
 
                     p11 = localClone.data() + (INT64)ly1 * localPitch + lx1 * bytesPerPixel;
                     p21 = localClone.data() + (INT64)ly1 * localPitch + lx2 * bytesPerPixel;
