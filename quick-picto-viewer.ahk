@@ -75483,7 +75483,6 @@ calcBrushSymmetryCoords(tkX, tkY, imgW, imgH, ByRef skX, ByRef skY) {
 ActPaintBrushNow() {
    Critical, on
    Static lastInvoked := 1, prevMX, prevMY
-
    If (A_TickCount - lastOtherWinClose<450)
       Return
 
@@ -75682,8 +75681,8 @@ ActPaintBrushNow() {
 
    If (BrushToolType=6)
    {
-      If (isUserStepu=0 || stepu > brushSize//10)
-         stepu := clampInRange(brushSize//25, 1, 60)
+      If (isUserStepu=0 || stepu>brushSize//10)
+         stepu := clampInRange(brushSize//5, 2, 295)
    }
 
    If (!stepu || BrushToolType>=7 || brushToolStepping=0 && brushSize>1)
@@ -75865,7 +75864,7 @@ ActPaintBrushNow() {
                If (thisWetness = 22)
                   maxSmudgeDist := 99999999
                Else
-                  maxSmudgeDist := brushSize * (0.5 + 10.0 * (thisWetness/21)**3)
+                  maxSmudgeDist := brushSize * (0.5 + 10.0 * (thisWetness/21)**4)
                fadeFactor := 1.0 - (smudgeAccDist / maxSmudgeDist)
                If (fadeFactor < 0.01)
                   fadeFactor := 0.01
@@ -76273,8 +76272,8 @@ ActPaintBrushLargeNow() {
 
    If (BrushToolType=6)
    {
-      If (isUserStepu=0 || stepu > brushSize//10)
-         stepu := clampInRange(brushSize//25, 1, 60)
+      If (isUserStepu=0 || stepu>brushSize//10)
+         stepu := clampInRange(brushSize//5, 2, 295)
    }
 
    If (!stepu || BrushToolType>=7 || brushToolStepping=0 && brushSize>1)
@@ -76790,14 +76789,8 @@ ActDrawAlphaMaskBrushNow() {
    If (BrushToolType>6 || BrushToolType=5) && (isUserStepu=1 && stepu<brushSize/4 && isInRange(BrushToolAspectRatio, -5, 5) && isInRange(BrushToolAngle + 180, 0, 5))
       stepu := brushSize//4 + 1
 
-   If (BrushToolType=6)
-   {
-      If (isUserStepu=0 || stepu > brushSize//10)
-         stepu := clampInRange(brushSize//25, 1, 60)
-   }
-
-   If (!stepu || BrushToolType>=7 || brushToolStepping=0)
-      stepu := 1
+   If !stepu
+      stepu := 2
 
    If !GetKeyState("Shift", "P")
       prevMX := prevMY := 0
