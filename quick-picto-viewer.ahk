@@ -75566,9 +75566,6 @@ ActPaintBrushNow() {
       coloruA := Gdip_GetPixelColor(whichBitmap, kX, kY, 1)
       startToolColor := SubStr(MixARGB(coloruA, "0xFF" startToolColor, 0.2), 5)
       thisWetness := 20
-   } Else If (BrushToolType=6) ; smudge 
-   {
-      thisWetness := clampInRange(BrushToolWetness + 6, 4, 22)
    } Else thisWetness := BrushToolWetness
 
    thisBulgePinchFactor := BrushToolWetness + 1
@@ -75852,20 +75849,22 @@ ActPaintBrushNow() {
             cur_tkY := tkY
             If (BrushToolType=6)
             {
-               strengthMultiplier := (brushSize<985) ? (98 - brushSize//10) : 4
-               strengthMultiplier := clampInRange( strengthMultiplier - (100 - BrushToolSoftness)//2, 4, 98)
-               smudgeStrength := clampInRange(thisWetness * strengthMultiplier + 1, 5, brushSize)
+               t_wet := thisWetness / 22.0
+               smudgeStrength := clampInRange(brushSize * (0.05 + 0.95 * t_wet), 5, brushSize)
                cur_offX := dirX * clampInRange(distStepX, 1, smudgeStrength)
                cur_offY := dirY * clampInRange(distStepY, 1, smudgeStrength)
 
                stepDist := Sqrt(distStepX*distStepX + distStepY*distStepY)
                smudgeAccDist += stepDist
-               maxSmudgeDist := brushSize * (thisWetness/22 * 2 + 2)
+               If (thisWetness = 22)
+                  maxSmudgeDist := 99999999
+               Else
+                  maxSmudgeDist := brushSize * (0.5 + 10.0 * (thisWetness/21)**2)
                fadeFactor := 1.0 - (smudgeAccDist / maxSmudgeDist)
                If (fadeFactor < 0.01)
                   fadeFactor := 0.01
 
-               cur_opacity := Floor(thisOpacity * (thisWetness/22) * fadeFactor)
+               cur_opacity := Floor(thisOpacity * (0.05 + 0.95 * t_wet) * fadeFactor)
                If (BrushToolTexture=1 && thisIndex>1 && (A_TickCount - plza>450) && BrushToolOverDraw=1)
                {
                   plza := A_TickCount
@@ -76152,9 +76151,6 @@ ActPaintBrushLargeNow() {
       coloruA := FreeImage_GetPixelColor(viewportQPVimage.imgHandle, kX, kY, 1)
       startToolColor := SubStr(MixARGB(coloruA, "0xFF" startToolColor, 0.2), 5)
       thisWetness := 20
-   } Else If (BrushToolType=6) ; smudge 
-   {
-      thisWetness := clampInRange(BrushToolWetness + 6, 4, 22)
    } Else thisWetness := BrushToolWetness
 
    oMx := kX, oMy := kY
@@ -76445,20 +76441,22 @@ ActPaintBrushLargeNow() {
             {
                ; Smudge brush: offset = step displacement in the movement direction,
                ; scaled by wetness-based smudge strength factor.
-               strengthMultiplier := (brushSize<985) ? (98 - brushSize//10) : 4
-               strengthMultiplier := clampInRange( strengthMultiplier - (100 - BrushToolSoftness)//2, 4, 98)
-               smudgeStrength := clampInRange(thisWetness * strengthMultiplier + 1, 5, brushSize)
+               t_wet := thisWetness / 22.0
+               smudgeStrength := clampInRange(brushSize * (0.05 + 0.95 * t_wet), 5, brushSize)
                cur_offX := dirX * clampInRange(distStepX, 1, smudgeStrength)
                cur_offY := dirY * clampInRange(distStepY, 1, smudgeStrength)
 
                stepDist := Sqrt(distStepX*distStepX + distStepY*distStepY)
                smudgeAccDist += stepDist
-               maxSmudgeDist := brushSize * (thisWetness/22 * 2 + 2)
+               If (thisWetness = 22)
+                  maxSmudgeDist := 99999999
+               Else
+                  maxSmudgeDist := brushSize * (0.5 + 10.0 * (thisWetness/21)**2)
                fadeFactor := 1.0 - (smudgeAccDist / maxSmudgeDist)
                If (fadeFactor < 0.01)
                   fadeFactor := 0.01
 
-               cur_opacity := Floor(thisOpacity * (thisWetness/22) * fadeFactor)
+               cur_opacity := Floor(thisOpacity * (0.05 + 0.95 * t_wet) * fadeFactor)
                If (BrushToolTexture=1 && thisIndex>1 && (A_TickCount - plza>450) && BrushToolOverDraw=1)
                {
                   plza := A_TickCount

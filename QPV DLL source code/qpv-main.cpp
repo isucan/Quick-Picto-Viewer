@@ -8395,7 +8395,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
 
     // Pre-calculate bulge/pinch constants
     double falloff_sq = falloff * falloff;
-    double dest_radius = brushSize / 2.0 + bulgePinchFactor;
+    double dest_radius = (brushType == 7 || brushType == 8) ? (brushSize / 2.0) : (brushSize / 2.0 + bulgePinchFactor);
     if (dest_radius<0.5)
        dest_radius = 0.5;
 
@@ -8575,10 +8575,45 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             {
                 // bulge/pinch brushes
                 double r_dest = sqrt(dx * dx + dy * dy);
-                if (r_dest >= dest_radius)
+                double R = brushSize / 2.0;
+                if (r_dest >= R)
                     continue;
-                src_dx = dx * ((brushSize / 2.0) / dest_radius);
-                src_dy = dy * ((brushSize / 2.0) / dest_radius);
+
+                if (r_dest < 1e-6)
+                {
+                    src_dx = 0.0;
+                    src_dy = 0.0;
+                }
+                else
+                {
+                    double r = r_dest / R;
+                    // Extract wetness from bulgePinchFactor
+                    // bulgePinchFactor = wetness + 1 (for bulge)
+                    // bulgePinchFactor = -wetness - 1 (for pinch)
+                    double wetness = (brushType == 8) ? (double)(bulgePinchFactor - 1) : (double)(-bulgePinchFactor - 1);
+                    double t = wetness / 22.0;
+                    if (t < 0.0) t = 0.0;
+                    if (t > 1.0) t = 1.0;
+
+                    double p = 1.0;
+                    if (brushType == 8) // bulge
+                    {
+                        p = 1.0 + 7.0 * t;
+                    }
+                    else // pinch
+                    {
+                        p = 1.0 - 0.9 * t;
+                    }
+
+                    double warped_r = R * pow(r, p);
+                    double warped_dx = dx * (warped_r / r_dest);
+                    double warped_dy = dy * (warped_r / r_dest);
+
+                    // Blend coordinates based on softness mask
+                    double w = mask_val / 255.0;
+                    src_dx = dx * (1.0 - w) + warped_dx * w;
+                    src_dy = dy * (1.0 - w) + warped_dy * w;
+                }
             }
 
             // Sequential/cache-friendly pixel lookups (100% L1/L2 hits)
@@ -8600,6 +8635,8 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int srcR = tgtR;
             int srcA = tgtA;
             float weight = (mask_val / 255.0f) * opaf;
+            if (brushType == 7 || brushType == 8)
+                weight = opaf;
             if (brushType<=5 && brushOverDraw==0 && overDrawOkay==1)
             {
                 int cx = px >> 7;
