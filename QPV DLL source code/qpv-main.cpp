@@ -8922,10 +8922,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                outA = weighTwoValues(srcA, tgtA, weight);
             } else
             {
-               RGBAColor Orgb = { srcB, srcG, srcR, srcA };
+               outA = 255 - clamp(max(srcA, weightInt) - min(srcA, weightInt), 0, 255);
+               RGBAColor Orgb = { srcB, srcG, srcR, outA };
                RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
-               int opa = clamp(255 - weightInt, 0, 255);
-               RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, opa);
+               RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, 0);
                outR = blended.r;
                outG = blended.g;
                outB = blended.b;
