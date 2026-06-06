@@ -8251,10 +8251,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     if (brushType==6)
     {
         double scale = 3.0;
-        if (bulgePinchFactor > 0)
+        if (bulgePinchFactor>0)
         {
             int wetness = bulgePinchFactor - 1;
-            scale = 1.0 + 16.0 * (wetness / 22.0);
+            scale = 1.0 + 26.0 * (wetness / 22.0);
         }
 
         cloneOffsetX = offX * scale;
@@ -8269,7 +8269,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
     int cloneH = cloneEndY - cloneStartY + 1;
     std::vector<unsigned char> localClone;
     int localPitch = cloneW * bytesPerPixel;
-    if (!cloneData && (brushType == 6 || brushType == 7 || brushType == 8) && cloneW > 0 && cloneH > 0)
+    if (!cloneData && brushType>=6 && cloneW>0 && cloneH>0)
     {
         try {
             // Limit allocation size to 150MB to prevent OOM

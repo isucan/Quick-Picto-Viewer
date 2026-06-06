@@ -75977,7 +75977,9 @@ DrawPaintBrushNowStep:
    dll_tkY := imgH - 1 - cur_tkY
    dll_offY := -cur_offY
    dllRad := (texW>0) ? texW // 2 + 2 : brushSize // 2 + 2
-   If (BrushToolType>5)
+   If (BrushToolType=6)
+      dllRad += Abs(thisBulgePinchFactor) * 2 + 10
+   Else If (BrushToolType>=7)
       dllRad += Abs(thisBulgePinchFactor) + 10
    Else If (BrushToolType=5)
       dllRad += thisEffectBlur + 10
