@@ -75693,7 +75693,7 @@ ActPaintBrushNow() {
    pdx := pdy := 0
    ShowTheImage("set-prev", imgPath)
    DllCall("qpvmain.dll\ResetBrushOpacityMap")
-   If (BrushToolType=4) ; eraser brush
+   If (BrushToolType=4 || BrushToolBlendMode=25) ; eraser brush
       currIMGdetails.HasAlpha := 1
 
    thisEffectHue   := (BrushToolApplyColorFX=1) ? PasteInPlaceHue : 0
@@ -75960,22 +75960,7 @@ ActPaintBrushNow() {
 
 DrawPaintBrushNowStep:
    cloneBits := clonePitch := cloneBMP := 0
-   If (BrushToolType=3)
-   {
-      If (BrushToolDynamicCloner=1)
-      {
-         cur_offX := cur_tkX - tkX + oMx - tinyPrevAreaCoordX
-         cur_offY := cur_tkY - tkY + oMy - tinyPrevAreaCoordY
-      } Else
-      {
-         cur_offX := cur_tkX - tinyPrevAreaCoordX
-         cur_offY := cur_tkY - tinyPrevAreaCoordY
-      }
-   }
-
    colorARGB := "0x" Format("{1:x}", 255) startToolColor
-   dll_tkY := imgH - 1 - cur_tkY
-   dll_offY := -cur_offY
    dllRad := (texW>0) ? texW // 2 + 2 : brushSize // 2 + 2
    If (BrushToolType=6)
       dllRad += Abs(thisBulgePinchFactor) * 2 + 10
@@ -75986,6 +75971,17 @@ DrawPaintBrushNowStep:
 
    If (BrushToolType=3)
    {
+      ; Cloner brush
+      If (BrushToolDynamicCloner=1)
+      {
+         cur_offX := cur_tkX - tkX + oMx - tinyPrevAreaCoordX
+         cur_offY := cur_tkY - tkY + oMy - tinyPrevAreaCoordY
+      } Else
+      {
+         cur_offX := cur_tkX - tinyPrevAreaCoordX
+         cur_offY := cur_tkY - tinyPrevAreaCoordY
+      }
+
       src_tkX := cur_tkX - cur_offX
       src_tkY := cur_tkY - cur_offY
       dstX1 := clampInRange(Round(cur_tkX - dllRad), 0, imgW - 1)
@@ -76015,6 +76011,9 @@ DrawPaintBrushNowStep:
       }
    }
 
+   dll_tkY := imgH - 1 - cur_tkY
+   dll_offY := -cur_offY
+   overDraw := (blendMode=25) ? 0 : BrushToolOverDraw
    lockX := Round(Max(0, Floor(cur_tkX - dllRad)))
    lockY := Round(Max(0, Floor(cur_tkY - dllRad)))
    lockW := Round(Min(imgW - lockX, Ceil(dllRad * 2)))
@@ -76060,7 +76059,7 @@ DrawPaintBrushNowStep:
             , "int", texH
             , "int", texPitch
             , "int", texBpp
-            , "int", BrushToolOverDraw
+            , "int", overDraw
             , "int", lockX
             , "int", lockY
             , "int", lockW

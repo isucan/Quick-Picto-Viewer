@@ -8543,7 +8543,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             }
         }
 
-        for (int px = scan_sX; stepX > 0 ? px <= scan_eX : px >= scan_eX; px += stepX)
+        for (int px = scan_sX; stepX>0 ? px<=scan_eX : px>=scan_eX; px += stepX)
         {
             // 1. Calculate selection constraints
             if (useSelArea)
@@ -8559,7 +8559,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             double src_dy = dy;
 
             int mask_val = 255;
-            if (texData && texW > 0 && texH > 0)
+            if (texData && texW>0 && texH>0)
             {
                 int tx = (int)(dx + texW / 2.0);
                 int ty = (int)(dy + texH / 2.0);
@@ -8589,10 +8589,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                         // Only compute sqrt if we are in the outer soft boundary
                         double dist_norm = sqrt(dist_norm_sq);
                         mask_val = (int)(255.0 * (1.0 - dist_norm) / (1.0 - falloff));
-                        if (mask_val<0)
-                           mask_val = 0;
-                        if (mask_val>255)
-                           mask_val = 255;
+                        mask_val = clamp(mask_val, 0, 255);
                     }
                 }
             }
@@ -8600,6 +8597,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             if (mask_val==0)
                continue;
 
+            float mask_fval = mask_val / 255.0f;
             if (brushType==7 || brushType==8)
             {
                 // bulge/pinch brushes
@@ -8618,14 +8616,14 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                     // Extract wetness from bulgePinchFactor
                     // bulgePinchFactor = wetness + 1 (for bulge)
                     // bulgePinchFactor = -wetness - 1 (for pinch)
-                    double wetness = (brushType == 8) ? (double)(bulgePinchFactor - 1) : (double)(-bulgePinchFactor - 1);
+                    double wetness = (brushType==8) ? (double)(bulgePinchFactor - 1) : (double)(-bulgePinchFactor - 1);
                     double t = wetness / 32.0;
                     if (t < 0.0) t = 0.0;
                     if (t > 1.0) t = 1.0;
 
                     double t2 = t * t;
                     double p = 1.0;
-                    if (brushType == 8) // bulge
+                    if (brushType==8) // bulge
                         p = 1.0 + 7.0 * (t2/5);
                     else // pinch
                         p = 1.0 - 0.9 * (t2/2);
@@ -8648,7 +8646,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int tgtB = targetPixel[0];
             int tgtG = targetPixel[1];
             int tgtR = targetPixel[2];
-            int tgtA = (bytesPerPixel == 4) ? targetPixel[3] : 255;
+            int tgtA = (bytesPerPixel==4) ? targetPixel[3] : 255;
 
             // Prepare output color
             int outB = tgtB;
@@ -8659,7 +8657,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             int srcG = tgtG;
             int srcR = tgtR;
             int srcA = tgtA;
-            float weight = (mask_val / 255.0f) * opaf;
+            float weight = mask_fval * opaf;
             if (brushType==6)
             {
                 if (bulgePinchFactor>0)
@@ -8709,14 +8707,14 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             }
 
             int weightInt = clamp(weight * 255.0f, 0.0f, 255.0f);
-            if (brushType == 1 || brushType == 2)
+            if (brushType==1 || brushType==2)
             {
                 // Paint brush: Solid/Soft Color
                 srcR = brushR;
                 srcG = brushG;
                 srcB = brushB;
                 srcA = brushA;
-            } else if (brushType == 3)
+            } else if (brushType==3)
             {
                 // Cloner brush: sample from srcData
                 int srcX_raw = (int)round(px - offX);
@@ -8752,7 +8750,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 srcG = int_to_char[pixel.g];
                 srcR = int_to_char[pixel.r];
                 srcA = int_to_char[pixel.a];
-            } else if (brushType == 4)
+            } else if (brushType==4)
             {
                 // Eraser brush
                 if (bytesPerPixel == 3)
@@ -8769,7 +8767,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                     else
                        srcA = 0;        // Standard erase: reduce alpha
                 }
-            } else if (brushType == 5)
+            } else if (brushType==5)
             {
                 // Effects brush: Hue, Saturation, Lightness, Gamma, Blur
                 int effB = tgtB;
@@ -8811,7 +8809,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 srcG = int_to_char[pixel.g];
                 srcR = int_to_char[pixel.r];
                 srcA = int_to_char[pixel.a];
-            } else if (brushType == 6)
+            } else if (brushType==6)
             {
                 // Smudge brush: grab pixels from previous offset position with bilinear interpolation
                 double srcXf = clamp((double)px - cloneOffsetX, 0.0, (double)(imgW - 1));
@@ -8863,7 +8861,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                    srcA = (int)round(w11 * p11[3] + w21 * p21[3] + w12 * p12[3] + w22 * p22[3]);
                 else
                    srcA = 255;
-            } else if (brushType == 7 || brushType == 8)
+            } else if (brushType==7 || brushType==8)
             {
                 // Pinch / Bulge brush: scale coordinate mapping with bilinear interpolation
                 double srcXf = clamp(tkX + src_dx, 0.0, (double)(imgW - 1));
@@ -8920,6 +8918,15 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             if (brushType==4 && bytesPerPixel==4)
             {
                outA = weighTwoValues(srcA, tgtA, weight);
+               outA = weighTwoValues(srcA, tgtA, weight);
+               outA = weighTwoValues(srcA, tgtA, weight);
+               outA = weighTwoValues(srcA, tgtA, weight);
+            } else if (blendMode==24)
+            {
+               outR = weighTwoValues(srcR, tgtR, mask_fval);
+               outG = weighTwoValues(srcG, tgtG, mask_fval);
+               outB = weighTwoValues(srcB, tgtB, mask_fval);
+               outA = weighTwoValues(opacity, tgtA, mask_fval);
             } else
             {
                outA = 255 - clamp(max(srcA, weightInt) - min(srcA, weightInt), 0, 255);
