@@ -1073,7 +1073,7 @@ inline bool checkDistPoints(const float &x0, const float &y0, const float &x1, c
 
 void drawLineSegmentPerpendicular(int x0, int y0, const int &x1, const int &y1, const int &cx, const int &cy, const bool &coli, vector<pair<float, float>> &grid) {
 // void drawLineSegmentPerpendicular(float x0, float y0, const float &x1, const float &y1, const float &cx, const float &cy, const bool &coli, vector<pair<float, float>> &grid) {
-// bresehan algorithm based on
+// bresenham algorithm based on
 // https://zingl.github.io/bresenham.html
 // https://github.com/zingl/Bresenham
 // by Zingl Alois
@@ -2218,7 +2218,7 @@ RGBColorI calculateBlendModes(int rO, int gO, int bO, int rB, int gB, int bB, in
         gT = abs(gBf - gOf);
         bT = abs(bBf - bOf);
     }
-    else if (blendMode == 19) { // substract
+    else if (blendMode == 19) { // subtract
         rT = rBf - rOf;
         gT = gBf - gOf;
         bT = bBf - bOf;
@@ -5109,7 +5109,7 @@ DLL_API INT64 DLL_CALLCONV calcPHashAlgo(char *givenArray, UINT size, int compar
 // based on the PHP implementation found on https://github.com/jenssegers/imagehash
 
     // givenArray is the pixels fingerprint
-    // calculte DCT for rows
+    // calculate DCT for rows
 
     double rows[32][32];
     std::array<double, 32>  trow;
@@ -6925,7 +6925,7 @@ STATUS InsertJPEGFile2PDF(const char *fileName, int fileSize, PJPEG2PDF pdfId) {
 DLL_API int DLL_CALLCONV CreatePDFfile(const char* tempDir, const char* destinationPDFfile, const char* scriptDir, UINT *fListArray, int arraySize, float pageW, float pageH, int dpi) {
 // based on https://www.codeproject.com/Articles/29879/Simplest-PDF-Generating-API-for-JPEG-Image-Content
 
-  // Initializd the PDF Object with Page Size Information
+  // Initialized the PDF Object with Page Size Information
   fnOutputDebug("function CreatePDFfile called" + std::to_string(pageW) + " x " + std::to_string(pageH) );
   PJPEG2PDF pdfId;
   pdfId = Jpeg2PDF_BeginDocument(pageW, pageH, dpi);
