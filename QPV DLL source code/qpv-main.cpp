@@ -8663,7 +8663,7 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                 if (bulgePinchFactor>0)
                 {
                     int wetness = bulgePinchFactor - 1;
-                    if (wetness > 15)
+                    if (wetness>15)
                     {
                         double weight_boost = 1.0 + 1.5 * ((wetness - 15) / 7.0);
                         weight = clamp((float)(weight * weight_boost), 0.0f, 1.0f);
@@ -8688,15 +8688,15 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
                         continue;
                     }
                 }
+
                 int px_mod = px & 127;
                 int pixelIdx = py_mod_shift + px_mod;
-
                 float accOpa = chunk[pixelIdx];
-                if (accOpa >= opaf)
+                if (accOpa>=opaf)
                    continue;
 
                 float maxAllowedWeight = (opaf - accOpa) / (1.0f - accOpa);
-                if (weight >= maxAllowedWeight)
+                if (weight>=maxAllowedWeight)
                 {
                     weight = maxAllowedWeight;
                     chunk[pixelIdx] = opaf;
