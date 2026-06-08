@@ -8158,6 +8158,7 @@ DLL_API void DLL_CALLCONV ResetBrushOpacityMap() {
         }
     }
     std::vector<float*>().swap(brushOpacityChunks);
+    std::vector<unsigned char>().swap(brushOriginalPixels);
     chunkGridW = 0;
     chunkGridH = 0;
 }
@@ -8232,6 +8233,33 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             brushOpacityChunks.assign(totalChunks, nullptr);
             chunkGridW = numChunksX;
             chunkGridH = numChunksY;
+            if (opacity < 255)
+            {
+                try {
+                    brushOriginalPixels.resize((size_t)imgW * imgH * 3);
+                    #pragma omp parallel for schedule(static)
+                    for (int y = 0; y < imgH; ++y)
+                    {
+                        unsigned char* srcRow = imgData + (INT64)y * pitch;
+                        unsigned char* dstRow = brushOriginalPixels.data() + (INT64)y * imgW * 3;
+                        if (bytesPerPixel == 3)
+                        {
+                            memcpy(dstRow, srcRow, (size_t)imgW * 3);
+                        }
+                        else if (bytesPerPixel == 4)
+                        {
+                            for (int x = 0; x < imgW; ++x)
+                            {
+                                dstRow[x * 3]     = srcRow[x * 4];     // B
+                                dstRow[x * 3 + 1] = srcRow[x * 4 + 1]; // G
+                                dstRow[x * 3 + 2] = srcRow[x * 4 + 2]; // R
+                            }
+                        }
+                    }
+                } catch (...) {
+                    brushOriginalPixels.clear();
+                }
+            }
         }
     }
 
@@ -8707,6 +8735,37 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             }
 
             int weightInt = clamp(weight * 255.0f, 0.0f, 255.0f);
+
+            int origB = tgtB;
+            int origG = tgtG;
+            int origR = tgtR;
+            int origA = tgtA;
+            float blendWeight = weight;
+            int blendWeightInt = weightInt;
+
+            if (!brushOriginalPixels.empty())
+            {
+                size_t origIdx = ((size_t)iy * imgW + px) * 3;
+                origB = brushOriginalPixels[origIdx];
+                origG = brushOriginalPixels[origIdx + 1];
+                origR = brushOriginalPixels[origIdx + 2];
+
+                int cx = px >> 7;
+                size_t chunkIdx = cy_grid + cx;
+                float* chunk = brushOpacityChunks[chunkIdx];
+                if (chunk)
+                {
+                    int px_mod = px & 127;
+                    int pixelIdx = py_mod_shift + px_mod;
+                    blendWeight = chunk[pixelIdx];
+                    blendWeightInt = clamp(blendWeight * 255.0f, 0.0f, 255.0f);
+                }
+
+                if (blendWeight < 0.999f)
+                {
+                    origA = clamp((int)round((tgtA - blendWeight * 255.0f) / (1.0f - blendWeight)), 0, 255);
+                }
+            }
             if (brushType==1 || brushType==2)
             {
                 // Paint brush: Solid/Soft Color
@@ -8770,10 +8829,10 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
             } else if (brushType==5)
             {
                 // Effects brush: Hue, Saturation, Lightness, Gamma, Blur
-                int effB = tgtB;
-                int effG = tgtG;
-                int effR = tgtR;
-                int effA = tgtA;
+                int effB = origB;
+                int effG = origG;
+                int effR = origR;
+                int effA = origA;
 
                 // 1. Box Blur using OpenCV
                 if (hasBlurredRoi)
@@ -8917,21 +8976,22 @@ DLL_API int DLL_CALLCONV PaintBrushLarge(
 
             if (brushType==4 && bytesPerPixel==4)
             {
-               outA = weighTwoValues(srcA, tgtA, weight);
-               outA = weighTwoValues(srcA, tgtA, weight);
-               outA = weighTwoValues(srcA, tgtA, weight);
-               outA = weighTwoValues(srcA, tgtA, weight);
+               outA = weighTwoValues(srcA, origA, blendWeight);
+               outA = weighTwoValues(srcA, origA, blendWeight);
+               outA = weighTwoValues(srcA, origA, blendWeight);
+               outA = weighTwoValues(srcA, origA, blendWeight);
             } else if (blendMode==24)
             {
-               outR = weighTwoValues(srcR, tgtR, mask_fval);
-               outG = weighTwoValues(srcG, tgtG, mask_fval);
-               outB = weighTwoValues(srcB, tgtB, mask_fval);
-               outA = weighTwoValues(opacity, tgtA, mask_fval);
+               float factor = (opaf > 0.0f) ? clamp(blendWeight / opaf, 0.0f, 1.0f) : blendWeight;
+               outR = weighTwoValues(srcR, origR, blendWeight);
+               outG = weighTwoValues(srcG, origG, blendWeight);
+               outB = weighTwoValues(srcB, origB, blendWeight);
+               outA = weighTwoValues(opacity, origA, factor);
             } else
             {
-               outA = 255 - clamp(max(srcA, weightInt) - min(srcA, weightInt), 0, 255);
+               outA = 255 - clamp(max(srcA, blendWeightInt) - min(srcA, blendWeightInt), 0, 255);
                RGBAColor Orgb = { srcB, srcG, srcR, outA };
-               RGBAColor Brgb = { tgtB, tgtG, tgtR, tgtA };
+               RGBAColor Brgb = { origB, origG, origR, origA };
                RGBAColor blended = NEWERcalculateBlendModes(Orgb, Brgb, blendMode, flipLayers, linearGamma, 0, imgBpp, 0);
                outR = blended.r;
                outG = blended.g;
