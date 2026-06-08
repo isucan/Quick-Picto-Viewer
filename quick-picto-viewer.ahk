@@ -1,4 +1,4 @@
-﻿; Script details:
+; Script details:
 ;   Name:     Quick Picto Viewer
 ;   Platform: Windows 7 or later, preferred is Windows 10.
 ;   Author:   Marius Șucan - https://marius.sucan.ro/
@@ -34,7 +34,7 @@
 ; on this repository: https://github.com/marius-sucan/FreeImage-library/tree/qpv
 ; I fixed and improved various things, compared to the original version.
 ;
-; Original Licence: GPL. Please reffer to this page for more information. http://www.gnu.org/licenses/gpl.html
+; Original Licence: GPL. Please refer to this page for more information. http://www.gnu.org/licenses/gpl.html
 ; Current licence: I do not know, I do not care. Licences are for obedient entities.
 ;
 ;@Ahk2Exe-AddResource Lib\module-interface.ahk
@@ -68,7 +68,7 @@ CoordMode, Mouse, Screen
 CoordMode, ToolTip, Screen
 CoordMode, Menu, Screen
 SetWorkingDir, %A_ScriptDir%
-#Include %A_ScriptDir%\Lib\Gdip_All.ahk           ; graphics display interface plus v1.1, extended compilation editon
+#Include %A_ScriptDir%\Lib\Gdip_All.ahk           ; graphics display interface plus v1.1, extended compilation edition
 #Include %A_ScriptDir%\Lib\Gdi.ahk                ; graphics display interface written by Marius Șucan
 #Include %A_ScriptDir%\Lib\SGdiPrint.ahk
 #Include %A_ScriptDir%\Lib\freeimage-wrapper.ahk  ; used to load exotic file formats, written by Marius Șucan
@@ -52309,7 +52309,7 @@ BtnCreateNewImage() {
        superLarge := 1
        SoundBeep, 300, 100
        msgResult := msgBoxWrapper(appTitle ": WARNING", "The image dimensions exceed 536 MPx. Some image editing tools are not yet implemented for such large images and only one undo level will be available if sufficient system memory is accessible.`n`nTo lower the memory consumption, choose 24-bits RGBA.`n`nDo you want to create the new image?", "&32-bits RGBA|&24-bits RGB|&Abandon", 1, "exclamation")
-       ; msgResult := msgBoxWrapper(appTitle ": WARNING", "The image dimensions exceed the maximum limits. Width and height cannot exceed 199000 pixels, and total image size cannnot exceed 536 MPx.`n`nWould you like to adapt the dimensions and create the new image?", "&Yes|&No", 1, "exclamation")
+       ; msgResult := msgBoxWrapper(appTitle ": WARNING", "The image dimensions exceed the maximum limits. Width and height cannot exceed 199000 pixels, and total image size cannot exceed 536 MPx.`n`nWould you like to adapt the dimensions and create the new image?", "&Yes|&No", 1, "exclamation")
        If InStr(msgResult, "-bits")
           Sleep, -1 ; capIMGdimensionsGDIPlimits(UserNewWidth, UserNewHeight)
        Else
@@ -56472,7 +56472,7 @@ DefineSlidesRate() {
    slidesDuration := slideShowDelay
    ; slidesDuration := (slideShowDelay<drawModeCzeit) ? Round((drawModeCzeit*0.7+slideShowDelay)//2) : slideShowDelay
   ; If (slidesDuration<1995 && slidesDuration!=1000)
-  ;    miliSec := slidesDuration " milisec."
+  ;    miliSec := slidesDuration " millisec."
    ; Else
       duration := SecToHHMMSS(Round(slidesDuration/1000, 3))
    Return miliSec ? miliSec : duration
@@ -60189,7 +60189,7 @@ combineImagesMultiTiffGDIp(destFilePath) {
    NumPut(EncoderValueFlush, NumGet(NumPut(4, NumPut(1, _p+0)+20, "UInt")), "UInt")
    _E := DllCall("gdiplus\GdipSaveAddImage", "UPtr", multiBitmap, "uint", _p)
    ; this call fails, I do not know why; err-code = 2 ; invalid parameter; 
-   ; however the file is created succesfully
+   ; however the file is created successfully
    ; fnOutputDebug("TIFF end: " _E)
    trGdip_DisposeImage(multiBitmap)
    encoderParameters := ""
@@ -66887,7 +66887,7 @@ kMenu(mena, actu, labelu, funcu:=0, keywords:="", altLabel:="", keepUp:=0) {
       menuCustomNames := []
       funcListu := []
       objuA := [] ; menu items by index with properties objuA[menuIndex] := [prop1, prop2,... etc]
-      objuC := [] ; menu names and their properties objuC[mena] := [menu-name, container-menu, accelatorkey]
+      objuC := [] ; menu names and their properties objuC[mena] := [menu-name, container-menu, acceleratorkey]
       objuB := "" ; maps menu/menu items pairs to indexexes of objuA; objuB[mena "-" labelu] := menuIndex
       objuB := new hashtable()
       Return
@@ -66933,7 +66933,7 @@ kMenu(mena, actu, labelu, funcu:=0, keywords:="", altLabel:="", keepUp:=0) {
          menuCustomNames[mena "." oLabelu] := labelu
       } Else If (InStr(labelu, "`t") && InStr(actu, "Add"))
       {
-         ; when the added menu item has a default keyboard shorcut but the functions are not the same
+         ; when the added menu item has a default keyboard shortcut but the functions are not the same
          ; assume this default keyboard shortcut is disabled
 
          c := defineKBDcontexts(0)
@@ -70066,7 +70066,7 @@ coredrawWelcomeImg(modelu, iterations, moduz, sweepRand, mainWidth, mainHeight, 
        }
     } Else If (modelu=6)
     {
-       ; Maurer Rose; based on the implemention by Hellbent - found on AHK Forums
+       ; Maurer Rose; based on the implementation by Hellbent - found on AHK Forums
        If (startMode!=1)
           iterations := Ceil(iterations/10)
        Else
@@ -82486,7 +82486,7 @@ QPV_ShowThumbnails(modus:=0, allStarter:=0, allStartZeit:=0) {
       mustDoMultiCore := 0
    }
 
-   ; how much time in miliseconds can an image take to load and not be cached
+   ; how much time in milliseconds can an image take to load and not be cached
    timePerImg := 1550//imgsNotCached
    If (timePerImg<25 || modus="all")
       timePerImg := 25
@@ -89545,7 +89545,7 @@ invokePanelReviewSelContextMenu() {
 }
 
 BtnHelpStaticFoldersPanel() {
-   msgBoxWrapper(appTitle ": HELP", "This panel lists the folders where the indexed files are located; selected and total files are counted per folder. It is useful to:`n `n- update / rescan folders selectively, in order to avoid entire rescans`n `n- facilitate management of large amounts of files`n `n- identify folders with few or many files`n `n- identify per folder missing files, already seen images or favourited images [if these were selected using the appropiate tools before opening this panel]`n `nFolders marked with (*) are changed since the last scan, based on folder modified date. Right-click on listed entries for more options.`n `nWhen you choose to «Erase files from the index»», the files indexed pertaining to the selected folder will be removed ONLY from the index, NOT from the disk.`n`nThe folders can be filtered by selected files (:), percentage (*), files on disk (!), folder size ($), diff (#) or files indexed (?) by typing something like: *>200 or ?<300.", -1, 0, 0)
+   msgBoxWrapper(appTitle ": HELP", "This panel lists the folders where the indexed files are located; selected and total files are counted per folder. It is useful to:`n `n- update / rescan folders selectively, in order to avoid entire rescans`n `n- facilitate management of large amounts of files`n `n- identify folders with few or many files`n `n- identify per folder missing files, already seen images or favourited images [if these were selected using the appropriate tools before opening this panel]`n `nFolders marked with (*) are changed since the last scan, based on folder modified date. Right-click on listed entries for more options.`n `nWhen you choose to «Erase files from the index», the files indexed pertaining to the selected folder will be removed ONLY from the index, NOT from the disk.`n`nThe folders can be filtered by selected files (:), percentage (*), files on disk (!), folder size ($), diff (#) or files indexed (?) by typing something like: *>200 or ?<300.", -1, 0, 0)
 }
 
 BtnHelpReviewPanel() {
@@ -97421,7 +97421,7 @@ convertSVGunitsToPixels(ByRef length) {
        Return Round(StrReplace(length, "pc")*16)
     Else If InStr(length, "cm")   ; centimeters
        Return Round(StrReplace(length, "cm")*37.795275591)
-    Else If InStr(length, "mm")   ; milimeters
+    Else If InStr(length, "mm")   ; millimeters
        Return Round(StrReplace(length, "mm")*3.7795275591)
     Else If InStr(length, "in")   ; inches
        Return Round(StrReplace(length, "in")*96)
